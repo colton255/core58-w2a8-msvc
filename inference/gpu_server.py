@@ -33,7 +33,7 @@ THIS_DIR = Path(__file__).resolve().parent
 DEFAULT_CKPT_DIR = THIS_DIR.parent / "models" / "gpu" / "bitnet-b1.58-2B-4T-bf16"
 CKPT_DIR = os.getenv("BITNET_CKPT_DIR", str(DEFAULT_CKPT_DIR if DEFAULT_CKPT_DIR.exists() else (THIS_DIR / "checkpoints")))
 DEVICE = os.getenv("BITNET_DEVICE", "cuda:0")
-DECODE_BACKEND = os.getenv("BITNET_DECODE_BACKEND", "fp16")
+DECODE_BACKEND = os.getenv("BITNET_DECODE_BACKEND", "int2")
 
 g = None
 

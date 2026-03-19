@@ -48,7 +48,7 @@ except ImportError:
 class GenArgs:
     gen_length: int = 2048
     gen_bsz: int = 1
-    prompt_length: int = 2048
+    prompt_length: int = 64
 
     use_sampling: bool = False
     temperature: float = 0.8
@@ -67,7 +67,7 @@ class FastGen:
         tokenizer_path: Optional[str] = None,
         num_layers: int = 13,
         use_full_vocab: bool = False,
-        decode_backend: str = "fp16",
+        decode_backend: str = "int2",
     ) -> "FastGen":
         """
         Load a Llama or Code Llama checkpoint and return a new
@@ -340,7 +340,8 @@ def main(
     interactive: bool = False,
     chat_format: bool = False,
     sampling: bool = False,
-    decode_backend: str = "fp16",
+    decode_backend: str = "int2",
+    prompt_length: int = 64,
 ):
 
     local_rank = 0
@@ -349,7 +350,7 @@ def main(
 
     g = FastGen.build(
         ckpt_dir,
-        GenArgs(gen_length=max_new_tokens),
+        GenArgs(gen_length=max_new_tokens, prompt_length=prompt_length),
         device,
         decode_backend=decode_backend,
     )

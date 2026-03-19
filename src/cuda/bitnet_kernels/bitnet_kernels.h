@@ -23,23 +23,12 @@ typedef unsigned int uint;
 template <typename T1, typename T2>
 __device__ void decode_i2s_to_i8s(T1 *_i2s, T2 *_i8s, const int N = 16)
 {
-  // convert 8 int2b_t to 8 int8b_t -> 2 int32
-  uint *i8s = reinterpret_cast<uint *>(_i8s);
-
-  // i2s = {e0, e4, e8, e12, e1, e5, e9, e13, e2, e6, e10, e14, e3, e7, e11, e15}
   uint const i2s = *_i2s;
-
-  static constexpr uint immLut = (0xf0 & 0xcc) | 0xaa;     // 0b11101010
-  static constexpr uint BOTTOM_MASK = 0x03030303;          // 0xf -> 0b11 select 0,3
-  static constexpr uint I4s_TO_I8s_MAGIC_NUM = 0x00000000; 
+  T2 *i8s = reinterpret_cast<T2 *>(_i8s);
 
 #pragma unroll
-  for (int i = 0; i < (N / 4); i++)
-  {
-    asm volatile("lop3.b32 %0, %1, 0x03030303, 0x00000000, 0xaa;\n"
-                 : "=r"(i8s[i])
-                 : "r"(i2s >> (2 * i)));
-    i8s[i] = __vsubss4(i8s[i], 0x02020202);
+  for (int i = 0; i < N; ++i) {
+    i8s[i] = static_cast<T2>((static_cast<int>((i2s >> (2 * i)) & 0x3)) - 2);
   }
 }
 

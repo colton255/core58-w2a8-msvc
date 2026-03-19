@@ -1,6 +1,9 @@
 import torch
 import numpy as np
 
+_DIRECT_SLOT_TY = None
+_DIRECT_SLOT_TX = None
+
 
 def B_global_16x32_to_shared_load_16x32_layout(i, j):
     """
@@ -76,23 +79,38 @@ def interleave_weight_int8(qweight, nbits=2):\
 def convert_weight_int8_to_int2(weight):
     N = weight.shape[0]
     K = weight.shape[1]
+    if N % 16 != 0 or K % 128 != 0:
+        raise ValueError(f"Unsupported weight shape for int2 packing: {(N, K)}")
 
-    weight = weight+2
-    
-    weight = weight.cpu().numpy()
+    global _DIRECT_SLOT_TY, _DIRECT_SLOT_TX
+    if _DIRECT_SLOT_TY is None or _DIRECT_SLOT_TX is None:
+        slot_ty = []
+        slot_tx = []
+        for slot in range(128):
+            found = False
+            for ty in range(16):
+                for tx in range(8):
+                    idx = (tx // 2) * 32 + (ty // 8) * 16 + (tx % 2) * 8 + (ty % 8)
+                    if idx == slot:
+                        slot_ty.append(ty)
+                        slot_tx.append(tx)
+                        found = True
+                        break
+                if found:
+                    break
+        _DIRECT_SLOT_TY = np.array(slot_ty)
+        _DIRECT_SLOT_TX = np.array(slot_tx)
 
-    # print(weight)
-    # print(torch.max(weight), torch.min(weight))
+    weight = (weight.cpu().numpy().astype(np.uint8) + 2)
 
-    # permutated_weight_slow = permutate_weight(weight)
-    permutated_weight = permutate_weight_fastest(weight)
-    # assert np.all(permutated_weight_slow == permutated_weight)
-    # print("Permutation is correct")
-    compressed_weight = compress_int2_to_int8(permutated_weight)
-    interleaved_weight = interleave_weight_int8(compressed_weight, 2)
+    blocks = weight.reshape(N // 16, 16, K // 128, 8, 16).transpose(0, 2, 1, 3, 4)
+    slots = blocks[:, :, _DIRECT_SLOT_TY, _DIRECT_SLOT_TX, :]
 
-    ret = torch.from_numpy(interleaved_weight)
+    packed_words = np.zeros(slots.shape[:-1], dtype=np.uint32)
+    for i in range(16):
+        packed_words |= slots[..., i].astype(np.uint32) << (2 * i)
 
-    ret = torch.reshape(ret, (N, K // 4))
+    packed_bytes = packed_words.view(np.uint8).reshape(-1)
+    ret = torch.from_numpy(packed_bytes.reshape(N, K // 4))
 
     return ret
