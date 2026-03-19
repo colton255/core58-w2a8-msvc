@@ -26,13 +26,17 @@ function Resolve-CMakeCommand {
         }
     }
 
-    $repoPython = Join-Path $RepoRoot "venv_cpu\Scripts\python.exe"
-    if (Test-Path $repoPython) {
-        & $repoPython -m cmake --version *> $null
-        if ($LASTEXITCODE -eq 0) {
-            return [pscustomobject]@{
-                Executable = $repoPython
-                UsePythonModule = $true
+    foreach ($repoPython in @(
+        (Join-Path $RepoRoot "venv\Scripts\python.exe"),
+        (Join-Path $RepoRoot "venv_cpu\Scripts\python.exe")
+    )) {
+        if (Test-Path $repoPython) {
+            & $repoPython -m cmake --version *> $null
+            if ($LASTEXITCODE -eq 0) {
+                return [pscustomobject]@{
+                    Executable = $repoPython
+                    UsePythonModule = $true
+                }
             }
         }
     }

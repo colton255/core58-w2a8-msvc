@@ -1,8 +1,8 @@
 # core58-w2a8-msvc
 
-A minimal inferencing framework for 1.58-bit Ternary LLMs (BitNet), natively optimized for Windows MSVC environments.
+A minimal Windows-native inference framework for 1.58-bit ternary LLMs (BitNet).
 
-The implementation focuses on bypassing PyTorch's native `BF16` computational bottlenecks utilizing custom `W2A8` (Weight 2-bit, Activation 8-bit) quantization kernels. It provides a clean, automated build pipeline that avoids common CMake failures on Windows and strips out upstream bloat, reducing the compiled footprint to ~25MB.
+The implementation focuses on a dense `W2A8` (Weight 2-bit, Activation 8-bit) execution path that bypasses PyTorch's native `BF16` bottlenecks on Windows. The CPU route is automated around `llama.cpp`/GGUF, while the GPU route stays as a separate Windows-native experimental path built around PyTorch, CUDA graphs, and a custom DLL.
 
 ## Features
 - **Automated CPU Build Pipeline:** The `setup_env.py` script manages HuggingFace weights, generates the selected CPU kernels, and compiles the `llama-cli`, `llama-server`, and quantization binaries via CMake.
@@ -11,7 +11,8 @@ The implementation focuses on bypassing PyTorch's native `BF16` computational bo
 
 ## Installation
 
-Ensure you have Python 3.8+, Git, CMake, and Visual Studio C++ build tools installed with the LLVM/Clang toolchain enabled. For GPU builds, install the CUDA toolkit so `nvcc` is available on `PATH`.
+Ensure you have Python 3.8+, Git, and Visual Studio C++ build tools installed with the LLVM/Clang toolchain enabled. For GPU builds, install the CUDA toolkit so `nvcc` is available on `PATH`.
+This repository does not ship model weights or prepared GPU checkpoints.
 
 ```bash
 git clone https://github.com/syn-999/core58-w2a8-msvc.git
@@ -28,9 +29,14 @@ pip install -r requirements.txt
 The environment script automates the CPU download, conversion, and native compilation process.
 The CPU path is the primary automated flow. The GPU path remains a separate Windows-native experimental route on purpose and is not folded into `setup_env.py`.
 
-**For CPU Inference (AVX2 / NEON):**
+**For CPU Inference (default `i2_s` GGUF):**
 ```bash
 python setup_env.py --hf-repo tiiuae/Falcon3-10B-Instruct-1.58bit
+```
+
+**For CPU Inference (`tl2` on x86_64):**
+```bash
+python setup_env.py --hf-repo tiiuae/Falcon3-10B-Instruct-1.58bit --quant-type tl2
 ```
 
 **For GPU Inference (CUDA):**

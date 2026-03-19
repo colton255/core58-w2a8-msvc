@@ -11,6 +11,7 @@
 -r 3rdparty/llama.cpp/requirements/requirements-convert_lora_to_gguf.txt
 
 # BitNet Runtime Dependencies
+cmake>=4.0.0
 torch>=2.0.0
 fire>=0.5.0
 sentencepiece>=0.2.0
