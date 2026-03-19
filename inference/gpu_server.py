@@ -33,15 +33,16 @@ THIS_DIR = Path(__file__).resolve().parent
 DEFAULT_CKPT_DIR = THIS_DIR.parent / "models" / "gpu" / "bitnet-b1.58-2B-4T-bf16"
 CKPT_DIR = os.getenv("BITNET_CKPT_DIR", str(DEFAULT_CKPT_DIR if DEFAULT_CKPT_DIR.exists() else (THIS_DIR / "checkpoints")))
 DEVICE = os.getenv("BITNET_DEVICE", "cuda:0")
+DECODE_BACKEND = os.getenv("BITNET_DECODE_BACKEND", "fp16")
 
 g = None
 
 @app.on_event("startup")
 def load_model():
     global g
-    print(f"Loading model on {DEVICE} from {CKPT_DIR}")
+    print(f"Loading model on {DEVICE} from {CKPT_DIR} using {DECODE_BACKEND} decode")
     torch.cuda.set_device(DEVICE)
-    g = FastGen.build(CKPT_DIR, GenArgs(), DEVICE)
+    g = FastGen.build(CKPT_DIR, GenArgs(), DEVICE, decode_backend=DECODE_BACKEND)
     # Wrap tokenizer in ChatFormat for chat/completions
     g.tokenizer = ChatFormat(g.tokenizer)
     print("Model loaded and ready for inference.")

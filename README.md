@@ -46,6 +46,7 @@ python setup_env.py --hf-repo tiiuae/Falcon3-10B-Instruct-1.58bit --quant-type t
 **For GPU Inference (CUDA):**
 The GPU runtime does not ship checkpoints or compiled CUDA binaries. Prepare a checkpoint directory that contains `model_state_fp16.pt` and `model_state_int2.pt`, then build `src/cuda/bitnet_kernels/libbitnet.dll` locally with `src/cuda/bitnet_kernels/compile.bat`.
 The examples below assume you place those artifacts under `models/gpu/bitnet-b1.58-2B-4T-bf16`.
+The default GPU decode backend is `fp16`, which is slower than the packed int2 path but currently the quality-safe choice. The packed int2 decode backend is still available as `--decode_backend=int2` for kernel experiments.
 
 ## Quick Start
 
@@ -87,6 +88,12 @@ python inference/cpu_server.py -m models/cpu/Falcon3-10B-Instruct-1.58bit/ggml-m
 Routes via the native PyTorch/NVCC wrapper from the activated repo venv. If you keep separate local environments instead of the single `venv` shown above, use your GPU-specific interpreter such as `venv_gpu\Scripts\python.exe`.
 ```bash
 python inference/gpu_generate.py models/gpu/bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --sampling=True --max_new_tokens=256
+```
+
+**Experimental packed int2 decode:**
+Uses the custom packed CUDA kernel directly. This path is currently experimental and can degrade output quality.
+```bash
+python inference/gpu_generate.py models/gpu/bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --sampling=True --max_new_tokens=256 --decode_backend=int2
 ```
 
 **Preparing a New GPU Checkpoint:**

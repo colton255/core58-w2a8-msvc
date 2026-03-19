@@ -67,6 +67,7 @@ class FastGen:
         tokenizer_path: Optional[str] = None,
         num_layers: int = 13,
         use_full_vocab: bool = False,
+        decode_backend: str = "fp16",
     ) -> "FastGen":
         """
         Load a Llama or Code Llama checkpoint and return a new
@@ -74,23 +75,27 @@ class FastGen:
         """
         start_time = time.time()
 
+        if decode_backend not in {"fp16", "int2"}:
+            raise ValueError(f"Unsupported decode backend: {decode_backend}")
+
         model_args_prefill = fast.ModelArgs(use_kernel=False)
-        model_args_decode = fast.ModelArgs(use_kernel=True)
+        model_args_decode = fast.ModelArgs(use_kernel=(decode_backend == "int2"))
         tokenizer = Tokenizer(str(tokenizer_path or (THIS_DIR / "tokenizer.model")))
 
         torch.set_default_device(device)
         torch.set_default_dtype(torch.bfloat16)
 
         prefill_model = fast.Transformer(model_args_prefill)
-        decode_model = fast.Transformer(model_args_decode)
+        decode_model = prefill_model if decode_backend == "fp16" else fast.Transformer(model_args_decode)
 
         fp16_ckpt_path = str(Path(ckpt_dir) / "model_state_fp16.pt")
         fp16_checkpoint = torch.load(fp16_ckpt_path, map_location="cpu", weights_only=True)
-        int2_ckpt_path = str(Path(ckpt_dir) / "model_state_int2.pt")
-        int2_checkpoint = torch.load(int2_ckpt_path, map_location="cpu", weights_only=True)
 
         prefill_model.load_state_dict(fp16_checkpoint, strict=True)
-        decode_model.load_state_dict(int2_checkpoint, strict=True)
+        if decode_backend == "int2":
+            int2_ckpt_path = str(Path(ckpt_dir) / "model_state_int2.pt")
+            decode_checkpoint = torch.load(int2_ckpt_path, map_location="cpu", weights_only=True)
+            decode_model.load_state_dict(decode_checkpoint, strict=True)
 
         torch.cuda.synchronize()
         print(f"loaded model in {time.time() - start_time:.2f} seconds")
@@ -319,7 +324,7 @@ def get_prompts(interactive: bool) -> Iterable[list[str]]:
         while True:
             try:
                 prompts = input("enter prompt: ").split("\n")
-            except EOFError:
+            except (EOFError, KeyboardInterrupt):
                 print("exiting")
                 sys.exit(0)
             yield prompts
@@ -329,13 +334,25 @@ def get_prompts(interactive: bool) -> Iterable[list[str]]:
         ]
 
 
-def main(ckpt_dir: str, max_new_tokens: int = 50, interactive: bool = False, chat_format: bool = False, sampling: bool = False):
+def main(
+    ckpt_dir: str,
+    max_new_tokens: int = 50,
+    interactive: bool = False,
+    chat_format: bool = False,
+    sampling: bool = False,
+    decode_backend: str = "fp16",
+):
 
     local_rank = 0
     device = f"cuda:{local_rank}"
     torch.cuda.set_device(local_rank)
 
-    g = FastGen.build(ckpt_dir, GenArgs(gen_length=max_new_tokens), device)
+    g = FastGen.build(
+        ckpt_dir,
+        GenArgs(gen_length=max_new_tokens),
+        device,
+        decode_backend=decode_backend,
+    )
 
     if chat_format:
         g.tokenizer = ChatFormat(g.tokenizer)
