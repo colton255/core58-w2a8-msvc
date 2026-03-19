@@ -48,6 +48,7 @@ The GPU runtime does not ship checkpoints or compiled CUDA binaries. Prepare a c
 The examples below assume you place those artifacts under `models/gpu/bitnet-b1.58-2B-4T-bf16`.
 The default GPU decode backend is `int2`, which uses the packed CUDA kernel. If you need a slower reference fallback for debugging, switch to `--decode_backend=fp16`.
 Upstream BitNet also uses `xformers` attention for its fastest Linux/A100 path. On Windows this is optional and only works if your `xformers` wheel matches the exact local PyTorch, CUDA, and Python build.
+If you want to validate that stack explicitly, run `python scripts/check_gpu_env.py`. A working `xformers` path requires the local CUDA toolkit version to match `torch.version.cuda`.
 
 ## Quick Start
 
@@ -161,6 +162,12 @@ For low-level CUDA kernel debugging on Windows:
 
 ```powershell
 venv_gpu\Scripts\python.exe .\scripts\gpu_kernel_selftest.py
+```
+
+To inspect whether your GPU environment is ready for optional `xformers` attention:
+
+```powershell
+venv_gpu\Scripts\python.exe .\scripts\check_gpu_env.py
 ```
 
 ## License
