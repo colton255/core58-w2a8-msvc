@@ -229,14 +229,34 @@ class FastGen:
 
     @torch.inference_mode()
     def generate_all(
-        self, prompts: list[list[int]], use_cuda_graphs: bool, use_sampling: bool
+        self,
+        prompts: list[list[int]],
+        use_cuda_graphs: bool,
+        use_sampling: bool,
+        max_new_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
+        top_p: Optional[float] = None,
     ) -> Tuple[Stats, list[list[int]]]:
         bs = len(prompts)
         prompt_lens = [len(p) for p in prompts]
+        if any(prompt_len > self.gen_args.prompt_length for prompt_len in prompt_lens):
+            raise ValueError(
+                f"Prompt length exceeds configured limit of {self.gen_args.prompt_length} tokens. "
+                "Increase prompt_length and rebuild the generator."
+            )
         padded_prompt_lens = [self.gen_args.prompt_length] * bs
         max_prompt_length = max(prompt_lens)
-        gen_length = self.gen_args.gen_length
+        gen_length = max_new_tokens if max_new_tokens is not None else self.gen_args.gen_length
+        if gen_length <= 0:
+            raise ValueError("max_new_tokens must be at least 1")
         max_seq_length = max_prompt_length + gen_length
+        if max_seq_length > self.max_seq_length:
+            raise ValueError(
+                f"Requested sequence length {max_seq_length} exceeds compiled limit {self.max_seq_length}. "
+                "Increase prompt_length or gen_length and rebuild the generator."
+            )
+        temperature = self.gen_args.temperature if temperature is None else temperature
+        top_p = self.gen_args.top_p if top_p is None else top_p
         print(max_prompt_length, gen_length)
 
         # bias = AttnBias.from_seqlens(
@@ -265,15 +285,14 @@ class FastGen:
         logits = logits.view(bs, self.model_args.vocab_size)
 
         if use_sampling:
-            temp = 0.7
-            top_p = 0.95
-            probs = torch.softmax(logits / temp, dim=-1)
+            probs = torch.softmax(logits / max(temperature, 1e-5), dim=-1)
             next_token = sample_utils.top_p(probs, top_p)
         else:
             next_token = torch.argmax(logits, dim=-1)        
 
         next_token = next_token.reshape(bs)
         out_tokens[0, :] = next_token
+        generated_tokens = 1
 
         torch.cuda.synchronize()
         stats.phase("decode" if use_cuda_graphs else "total")
@@ -286,21 +305,20 @@ class FastGen:
             logits = output.view(bs, self.model_args.vocab_size)
 
             if use_sampling:
-                temp = 0.7
-                top_p = 0.95
-                probs = torch.softmax(logits / temp, dim=-1)
+                probs = torch.softmax(logits / max(temperature, 1e-5), dim=-1)
                 next_token = sample_utils.top_p(probs, top_p)
             else:
                 next_token = torch.argmax(logits, dim=-1)
 
             next_token = next_token.reshape(bs)
             out_tokens[niter, :] = next_token
+            generated_tokens = niter + 1
 
             if next_token.eq(eos_id).any():
                 break
 
         torch.cuda.synchronize()
-        stats.end_phase(tokens=niter * bs)
+        stats.end_phase(tokens=generated_tokens * bs)
 
         def trim_answer(prompt_len, tokens):
             # print(prompt, tokens)

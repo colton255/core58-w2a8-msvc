@@ -76,8 +76,10 @@ def run_server():
         '--temp', str(args.temperature),
         '--host', args.host,
         '--port', str(args.port),
-        '-cb'  # Enable continuous batching
     ]
+
+    if args.continuous_batching:
+        command.append('-cb')
     
     if args.prompt:
         command.extend(['-p', args.prompt])
@@ -103,6 +105,7 @@ if __name__ == "__main__":
     parser.add_argument("--temperature", type=float, help="Temperature for sampling", required=False, default=0.8)
     parser.add_argument("--host", type=str, help="IP address to listen on", required=False, default="127.0.0.1")
     parser.add_argument("--port", type=int, help="Port to listen on", required=False, default=8080)
+    parser.add_argument("--continuous-batching", action="store_true", help="Enable llama-server continuous batching")
     
     args = parser.parse_args()
     run_server()

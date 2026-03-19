@@ -70,6 +70,13 @@ Runs the Windows-native CUDA path from the activated repo venv.
 python inference/gpu_generate.py models/gpu/bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --sampling=True --max_new_tokens=256
 ```
 
+**GPU browser chat:**
+Starts a simple local browser UI backed by the FastAPI/OpenAI-compatible GPU server on `http://127.0.0.1:8000`.
+```powershell
+$env:BITNET_CKPT_DIR = "models/gpu/bitnet-b1.58-2B-4T-bf16"
+python inference/gpu_server.py
+```
+
 ## Additional Commands
 
 **CPU one-shot generation:**
@@ -79,7 +86,7 @@ python inference/cpu_inference.py -m models/cpu/Falcon3-10B-Instruct-1.58bit/ggm
 ```
 
 **CPU interactive chat server:**
-Launches the local `llama-server.exe` web UI. The wrapper resolves the common Falcon model filename even if your local `models/cpu` tree is nested one level deeper.
+Launches the local `llama-server.exe` web UI. The wrapper resolves the common Falcon model filename even if your local `models/cpu` tree is nested one level deeper. Continuous batching is left off by default for stability on Windows; add `--continuous-batching` if you want to experiment with it.
 ```bash
 python inference/cpu_server.py -m models/cpu/Falcon3-10B-Instruct-1.58bit/ggml-model-i2_s.gguf -t 8 -c 4096 --host 127.0.0.1 --port 8080
 ```
@@ -88,6 +95,21 @@ python inference/cpu_server.py -m models/cpu/Falcon3-10B-Instruct-1.58bit/ggml-m
 Routes via the native PyTorch/NVCC wrapper from the activated repo venv. If you keep separate local environments instead of the single `venv` shown above, use your GPU-specific interpreter such as `venv_gpu\Scripts\python.exe`.
 ```bash
 python inference/gpu_generate.py models/gpu/bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --sampling=True --max_new_tokens=256
+```
+
+**GPU browser/API server:**
+Serves both a small local chat UI at `http://127.0.0.1:8000` and the OpenAI-style API/docs at `/v1/chat/completions` and `/docs`.
+```powershell
+$env:BITNET_CKPT_DIR = "models/gpu/bitnet-b1.58-2B-4T-bf16"
+python inference/gpu_server.py
+```
+
+**GPU server tuning:**
+The server defaults to a larger prompt budget than the CLI. Increase these before startup if you want longer conversations or larger generations.
+```powershell
+$env:BITNET_PROMPT_LENGTH = "512"
+$env:BITNET_MAX_TOKENS = "1024"
+python inference/gpu_server.py
 ```
 
 **Reference BF16 decode:**
@@ -109,6 +131,7 @@ cd src/cuda/bitnet_kernels
 - `cpu_inference.py` exits when generation finishes. With `-cnv`, it remains attached to your terminal session until you stop it.
 - `cpu_server.py` keeps a `llama-server.exe` process running until you press `Ctrl+C`.
 - `gpu_generate.py --interactive=True` keeps the Python process alive until you exit the prompt or press `Ctrl+C`.
+- `gpu_server.py` serves a browser UI at `/`, API docs at `/docs`, and an OpenAI-style chat route at `/v1/chat/completions`.
 - Seeing one active model process is normal. Seeing multiple `llama-cli.exe` or `llama-server.exe` entries usually means you started more than one session or left an older server open.
 
 To inspect or clean up lingering CPU runtime processes on Windows:
