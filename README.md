@@ -111,13 +111,13 @@ A working `xformers` path requires the local CUDA toolkit version to match `torc
 ### CPU terminal chat
 
 ```powershell
-.\venv_cpu\Scripts\python.exe .\inference\cpu_inference.py -m .\models\cpu\Falcon3-10B-Instruct-1.58bit\ggml-model-i2_s.gguf -p "You are a concise, accurate assistant. Stay on topic and stop when the answer is complete." -cnv -t 8 -c 4096 -n 512
+.\venv_cpu\Scripts\python.exe .\inference\cpu_inference.py -m .\models\cpu\Falcon3-10B-Instruct-1.58bit\ggml-model-i2_s.gguf -p "You are a concise, accurate assistant. Stay on topic and stop when the answer is complete." -cnv -t 8 -c 4096 -temp 0.2 -n 512
 ```
 
 ### CPU browser chat
 
 ```powershell
-.\venv_cpu\Scripts\python.exe .\inference\cpu_server.py -m .\models\cpu\Falcon3-10B-Instruct-1.58bit\ggml-model-i2_s.gguf -p "You are a concise, accurate assistant. Stay on topic and stop when the answer is complete." -t 8 -c 4096 --host 127.0.0.1 --port 8080
+.\venv_cpu\Scripts\python.exe .\inference\cpu_server.py -m .\models\cpu\Falcon3-10B-Instruct-1.58bit\ggml-model-i2_s.gguf -p "You are a concise, accurate assistant. Stay on topic and stop when the answer is complete." -t 8 -c 4096 --temperature 0.2 --host 127.0.0.1 --port 8080
 ```
 
 Open `http://127.0.0.1:8080`.
@@ -125,15 +125,15 @@ Open `http://127.0.0.1:8080`.
 ### GPU terminal chat
 
 ```powershell
-.\venv_gpu\Scripts\python.exe .\inference\gpu_generate.py .\models\gpu\bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --sampling=True --max_new_tokens=256
+.\venv_gpu\Scripts\python.exe .\inference\gpu_generate.py .\models\gpu\bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --sampling=True --prompt_length=256 --max_new_tokens=256
 ```
 
 ### GPU browser chat
 
 ```powershell
 $env:BITNET_CKPT_DIR = ".\models\gpu\bitnet-b1.58-2B-4T-bf16"
-$env:BITNET_PROMPT_LENGTH = "512"
-$env:BITNET_MAX_TOKENS = "768"
+$env:BITNET_PROMPT_LENGTH = "1024"
+$env:BITNET_MAX_TOKENS = "512"
 .\venv_gpu\Scripts\python.exe .\inference\gpu_server.py
 ```
 
@@ -141,18 +141,18 @@ Open `http://127.0.0.1:8000`.
 
 ## Reference Commands
 
-### CPU one-shot generation
+### CPU instruct one-shot
 
 ```powershell
-.\venv_cpu\Scripts\python.exe .\inference\cpu_inference.py -m .\models\cpu\Falcon3-10B-Instruct-1.58bit\ggml-model-i2_s.gguf -p "A complete structural breakdown of a cell is" -n 200
+.\venv_cpu\Scripts\python.exe .\inference\cpu_inference.py -m .\models\cpu\Falcon3-10B-Instruct-1.58bit\ggml-model-i2_s.gguf -p "You are a concise, accurate assistant. Explain the structure of a biological cell in one clear paragraph." -cnv -t 8 -c 4096 -temp 0.2 -n 256
 ```
 
 ### GPU browser and API server
 
 ```powershell
 $env:BITNET_CKPT_DIR = ".\models\gpu\bitnet-b1.58-2B-4T-bf16"
-$env:BITNET_PROMPT_LENGTH = "512"
-$env:BITNET_MAX_TOKENS = "768"
+$env:BITNET_PROMPT_LENGTH = "1024"
+$env:BITNET_MAX_TOKENS = "512"
 .\venv_gpu\Scripts\python.exe .\inference\gpu_server.py
 ```
 
@@ -161,20 +161,22 @@ This serves:
 - API docs at `/docs`
 - OpenAI-style chat route at `/v1/chat/completions`
 
-### GPU server tuning
+### GPU longer-context server profile
 
 ```powershell
-$env:BITNET_PROMPT_LENGTH = "512"
-$env:BITNET_MAX_TOKENS = "1024"
+$env:BITNET_PROMPT_LENGTH = "1536"
+$env:BITNET_MAX_TOKENS = "768"
 $env:BITNET_TEMPERATURE = "0.2"
 $env:BITNET_TOP_P = "0.9"
 .\venv_gpu\Scripts\python.exe .\inference\gpu_server.py
 ```
 
+Use this profile when you want longer multi-turn GPU chats and have enough VRAM headroom. The default browser quick start above is the safer general-purpose setting.
+
 ### BF16 decode fallback
 
 ```powershell
-.\venv_gpu\Scripts\python.exe .\inference\gpu_generate.py .\models\gpu\bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --sampling=True --max_new_tokens=256 --decode_backend=fp16
+.\venv_gpu\Scripts\python.exe .\inference\gpu_generate.py .\models\gpu\bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --sampling=True --prompt_length=256 --max_new_tokens=256 --decode_backend=fp16
 ```
 
 ### Preparing a new GPU checkpoint
@@ -192,8 +194,8 @@ cmd /c .\src\cuda\bitnet_kernels\compile.bat
 - `gpu_generate.py --interactive=True` keeps one Python process alive until you exit the prompt or press `Ctrl+C`.
 - `gpu_server.py` serves a browser UI at `/`, API docs at `/docs`, and an OpenAI-style chat route at `/v1/chat/completions`.
 - Seeing one active model process is normal. Seeing multiple `llama-cli.exe` or `llama-server.exe` entries usually means you started more than one session or left an older one running.
-- The CPU browser route uses the vendored `llama.cpp` web UI, so the browser tab title is still upstream by default.
-- The GPU browser route uses this repo's own FastAPI frontend and identifies as `core58 GPU Chat`.
+- The CPU browser route uses the vendored `llama.cpp` web UI, so the browser tab title is still upstream by default and the browser page may retain local UI state across reloads.
+- The GPU browser route uses this repo's own FastAPI frontend and identifies as `core58 GPU Chat`. Its conversation state lives in page memory and resets on refresh or server restart.
 - GPU benchmarking should be warmed once before you record throughput. Cold first runs can underreport tokens per second.
 
 To inspect or clean up lingering CPU runtime processes on Windows:
