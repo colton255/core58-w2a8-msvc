@@ -132,6 +132,12 @@ To also verify the local CUDA helper build:
 .\scripts\smoke_test.ps1 -CheckGpu
 ```
 
+For low-level CUDA kernel debugging on Windows:
+
+```powershell
+venv_gpu\Scripts\python.exe .\scripts\gpu_kernel_selftest.py
+```
+
 ## License
 
 This project is released under the MIT License. It includes work derived from Microsoft BitNet and `llama.cpp`; see [`LICENSE`](./LICENSE).

@@ -33,8 +33,9 @@ if errorlevel 1 (
 
 pushd "%~dp0"
 
-:: Compile with nvcc targeting Ampere (RTX 30), Lovelace (RTX 40), and Hopper (H100/H200)
-nvcc -O3 -use_fast_math -allow-unsupported-compiler -shared -o libbitnet.dll bitnet_kernels.cu -gencode=arch=compute_80,code=sm_80 -gencode=arch=compute_86,code=sm_86 -gencode=arch=compute_89,code=sm_89 -gencode=arch=compute_90,code=sm_90 -D_WIN32 -Xcompiler "/wd4819"
+:: Keep the Windows build as close as possible to Microsoft's upstream kernel flags.
+:: We still emit a Windows DLL and keep a multi-arch fatbin for consumer GPUs.
+nvcc -std=c++17 -Xcudafe --diag_suppress=177 -lineinfo -O3 -allow-unsupported-compiler -shared -o libbitnet.dll bitnet_kernels.cu -gencode=arch=compute_80,code=sm_80 -gencode=arch=compute_86,code=sm_86 -gencode=arch=compute_89,code=sm_89 -gencode=arch=compute_90,code=sm_90 -Xcompiler "/wd4819"
 set "BUILD_RC=%errorlevel%"
 popd
 
