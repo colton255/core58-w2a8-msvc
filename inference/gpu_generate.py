@@ -5,7 +5,6 @@
 
 import json
 import os
-import readline  # type: ignore # noqa
 import sys
 import time
 from dataclasses import dataclass
@@ -14,12 +13,26 @@ from typing import Iterable, Optional, Tuple, Union
 
 import fire
 import torch
-import os
-os.add_dll_directory(os.path.join(os.path.dirname(torch.__file__), 'lib'))
-import gpu_model as fast
-from stats import Stats
-from tokenizer import Tokenizer, ChatFormat
-import sample_utils
+
+try:
+    import readline  # type: ignore # noqa: F401
+except ImportError:
+    readline = None
+
+THIS_DIR = Path(__file__).resolve().parent
+if os.name == "nt" and hasattr(os, "add_dll_directory"):
+    os.add_dll_directory(os.path.join(os.path.dirname(torch.__file__), "lib"))
+
+try:
+    import gpu_model as fast
+    from stats import Stats
+    from tokenizer import Tokenizer, ChatFormat
+    import sample_utils
+except ImportError:
+    from . import gpu_model as fast
+    from .stats import Stats
+    from .tokenizer import Tokenizer, ChatFormat
+    from . import sample_utils
 
 
 @dataclass
@@ -54,7 +67,7 @@ class FastGen:
 
         model_args_prefill = fast.ModelArgs(use_kernel=False)
         model_args_decode = fast.ModelArgs(use_kernel=True)
-        tokenizer = Tokenizer("./tokenizer.model")
+        tokenizer = Tokenizer(str(tokenizer_path or (THIS_DIR / "tokenizer.model")))
 
         torch.set_default_device(device)
         torch.set_default_dtype(torch.bfloat16)

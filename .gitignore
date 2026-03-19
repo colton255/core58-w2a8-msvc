@@ -6,18 +6,21 @@
 *.dll
 *.dot
 *.etag
+*.exp
 *.exe
 *.gcda
 *.gcno
 *.gcov
 *.gguf
 *.gguf.json
+*.lib
 *.lastModified
 *.log
 *.metallib
 *.o
 *.so
 *.tmp
+!src/cuda/bitnet_kernels/compile.bat
 
 # IDE / OS
 
@@ -39,6 +42,7 @@ gpu/checkpoints/*
 # Python
 
 /.venv
+/venv
 /venv_cpu
 /venv_gpu
 __pycache__/
@@ -46,4 +50,6 @@ __pycache__/
 poetry.toml
 
 build/
+.smoke-build/
+inference/generation_log.txt
 logs/

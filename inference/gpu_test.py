@@ -1,10 +1,14 @@
 import torch
 import os
+from pathlib import Path
 from torch.utils import benchmark
 from torch import nn
 
 import sys
-sys.path.append('../utils/gpu')
+CURRENT_DIR = Path(__file__).resolve().parent
+UTILS_GPU_DIR = CURRENT_DIR.parent / "utils" / "gpu"
+if str(UTILS_GPU_DIR) not in sys.path:
+    sys.path.insert(0, str(UTILS_GPU_DIR))
 from pack_weight import convert_weight_int8_to_int2
 from torch.profiler import profile, record_function, ProfilerActivity
 import ctypes
@@ -14,7 +18,7 @@ torch.manual_seed(42)
 np.random.seed(42)
 
 lib_ext = '.dll' if os.name == 'nt' else '.so'
-bitnet_lib = ctypes.CDLL(f'../src/cuda/bitnet_kernels/libbitnet{lib_ext}')
+bitnet_lib = ctypes.CDLL(str(CURRENT_DIR.parent / "src" / "cuda" / "bitnet_kernels" / f"libbitnet{lib_ext}"))
 
 def bitnet_int8xint2_linear(input0, input1, s, ws, ret):
     out_shape = list(input0.shape)

@@ -63,9 +63,9 @@ SUPPORTED_QUANT_TYPES = {
     "x86_64": ["i2_s", "tl2"]
 }
 
-COMPILER_EXTRA_ARGS = {
-    "arm64": ["-DBITNET_ARM_TL1=OFF", "-DLLAMA_BUILD_EXAMPLES=OFF", "-DLLAMA_BUILD_TESTS=OFF", "-DLLAMA_BUILD_SERVER=OFF", "-DGGML_OPENMP=OFF"],
-    "x86_64": ["-DBITNET_X86_TL2=OFF", "-DLLAMA_BUILD_EXAMPLES=OFF", "-DLLAMA_BUILD_TESTS=OFF", "-DLLAMA_BUILD_SERVER=OFF", "-DGGML_OPENMP=OFF"]
+COMMON_CMAKE_ARGS = {
+    "arm64": ["-DLLAMA_BUILD_EXAMPLES=OFF", "-DLLAMA_BUILD_TESTS=OFF", "-DGGML_OPENMP=OFF"],
+    "x86_64": ["-DLLAMA_BUILD_EXAMPLES=OFF", "-DLLAMA_BUILD_TESTS=OFF", "-DGGML_OPENMP=OFF"]
 }
 
 OS_EXTRA_ARGS = {
@@ -104,7 +104,75 @@ def run_command(command, shell=False, log_step=None):
             subprocess.run(command, shell=shell, check=True)
         except subprocess.CalledProcessError as e:
             logging.error(f"Error occurred while running command: {e}")
+            sys.exit(1)
+
+def resolve_cmake_command():
+    cmake_path = shutil.which("cmake")
+    if cmake_path:
+        return [cmake_path]
+
+    cmake_probe = subprocess.run(
+        [sys.executable, "-m", "cmake", "--version"],
+        capture_output=True,
+        text=True,
+    )
+    if cmake_probe.returncode == 0:
+        return [sys.executable, "-m", "cmake"]
+
+    logging.error("CMake is not available. Install CMake or `pip install cmake` in this environment.")
+    sys.exit(1)
+
+def resolve_windows_clang():
+    clang = shutil.which("clang")
+    clangxx = shutil.which("clang++")
+    if clang and clangxx:
+        return clang, clangxx
+
+    program_files_x86 = os.environ.get("ProgramFiles(x86)")
+    if program_files_x86:
+        vswhere = Path(program_files_x86) / "Microsoft Visual Studio" / "Installer" / "vswhere.exe"
+        if vswhere.exists():
+            result = subprocess.run(
+                [
+                    str(vswhere),
+                    "-latest",
+                    "-products",
+                    "*",
+                    "-requires",
+                    "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+                    "-property",
+                    "installationPath",
+                ],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0:
+                vs_path = result.stdout.strip()
+                for llvm_dir in (
+                    Path(vs_path) / "VC" / "Tools" / "Llvm" / "x64" / "bin",
+                    Path(vs_path) / "VC" / "Tools" / "Llvm" / "bin",
+                ):
+                    clang_path = llvm_dir / "clang.exe"
+                    clangxx_path = llvm_dir / "clang++.exe"
+                    if clang_path.exists() and clangxx_path.exists():
+                        return str(clang_path), str(clangxx_path)
+
+    logging.error("clang/clang++ were not found. Install the Visual Studio LLVM/Clang toolchain.")
+    sys.exit(1)
+
+def build_cmake_args():
+    _, arch = system_info()
+    if arch not in COMMON_CMAKE_ARGS:
+        logging.error(f"Arch {arch} is not supported yet")
         sys.exit(1)
+
+    cmake_args = [*COMMON_CMAKE_ARGS[arch], "-DBITNET_BUILD_SERVER=ON"]
+    if arch == "arm64":
+        cmake_args.append(f"-DBITNET_ARM_TL1={'ON' if args.quant_type == 'tl1' else 'OFF'}")
+    else:
+        cmake_args.append(f"-DBITNET_X86_TL2={'ON' if args.quant_type == 'tl2' else 'OFF'}")
+
+    return cmake_args
 
 def prepare_model():
     _, arch = system_info()
@@ -202,19 +270,14 @@ def gen_code():
 
 
 def compile():
-    # Check if cmake is installed
-    cmake_exists = subprocess.run(["cmake", "--version"], capture_output=True)
-    if cmake_exists.returncode != 0:
-        logging.error("Cmake is not available. Please install CMake and try again.")
-        sys.exit(1)
-    _, arch = system_info()
-    if arch not in COMPILER_EXTRA_ARGS.keys():
-        logging.error(f"Arch {arch} is not supported yet")
-        exit(0)
+    cmake_cmd = resolve_cmake_command()
     logging.info("Compiling the code using CMake.")
-    run_command(["cmake", "-B", "build", *COMPILER_EXTRA_ARGS[arch], *OS_EXTRA_ARGS.get(platform.system(), []), "-DCMAKE_C_COMPILER=clang", "-DCMAKE_CXX_COMPILER=clang++"], log_step="generate_build_files")
-    # run_command(["cmake", "--build", "build", "--target", "llama-cli", "--config", "Release"])
-    run_command(["cmake", "--build", "build", "--config", "Release"], log_step="compile")
+    configure_cmd = [*cmake_cmd, "-B", "build", *build_cmake_args(), *OS_EXTRA_ARGS.get(platform.system(), [])]
+    if platform.system() == "Windows":
+        clang, clangxx = resolve_windows_clang()
+        configure_cmd.extend([f"-DCMAKE_C_COMPILER={clang}", f"-DCMAKE_CXX_COMPILER={clangxx}"])
+    run_command(configure_cmd, log_step="generate_build_files")
+    run_command([*cmake_cmd, "--build", "build", "--config", "Release"], log_step="compile")
 
 def main():
     setup_gguf()

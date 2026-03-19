@@ -8,8 +8,13 @@ from dataclasses import dataclass
 import torch
 from einops import rearrange
 from safetensors.torch import save_file
-import model
 from pack_weight import convert_weight_int8_to_int2
+
+INFERENCE_DIR = Path(__file__).resolve().parents[2] / "inference"
+if str(INFERENCE_DIR) not in sys.path:
+    sys.path.insert(0, str(INFERENCE_DIR))
+
+import gpu_model as model
 
 @torch.inference_mode()
 def convert_ts_checkpoint(

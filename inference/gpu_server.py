@@ -1,20 +1,27 @@
 import os
 import time
 import uuid
+from pathlib import Path
 import torch
 import uvicorn
-from fastapi import FastAPI, Request
-from pydantic import BaseModel, Field
-from typing import List, Dict, Any, Optional
+from fastapi import FastAPI
+from pydantic import BaseModel
+from typing import List, Optional
 
-from generate import FastGen, GenArgs
-from tokenizer import ChatFormat
+try:
+    from gpu_generate import FastGen, GenArgs
+    from tokenizer import ChatFormat
+except ImportError:
+    from .gpu_generate import FastGen, GenArgs
+    from .tokenizer import ChatFormat
 
 app = FastAPI()
 
 # Global config
-CKPT_DIR = "./checkpoints/"
-DEVICE = "cuda:0"
+THIS_DIR = Path(__file__).resolve().parent
+DEFAULT_CKPT_DIR = THIS_DIR.parent / "models" / "gpu" / "bitnet-b1.58-2B-4T-bf16"
+CKPT_DIR = os.getenv("BITNET_CKPT_DIR", str(DEFAULT_CKPT_DIR if DEFAULT_CKPT_DIR.exists() else (THIS_DIR / "checkpoints")))
+DEVICE = os.getenv("BITNET_DEVICE", "cuda:0")
 
 g = None
 
