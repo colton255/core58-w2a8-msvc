@@ -1,8 +1,9 @@
 # Shared dependencies for the repo's CPU and GPU Python entrypoints.
 # Install this file into both `venv_cpu` and `venv_gpu`.
+# PyTorch is installed separately in the GPU environment so users can pick
+# the correct CUDA wheel for their local Windows setup.
 
 cmake>=4.0.0
-torch>=2.0.0
 fire>=0.5.0
 sentencepiece>=0.2.0
 huggingface-hub>=0.19.0
