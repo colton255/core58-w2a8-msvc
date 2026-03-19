@@ -381,16 +381,28 @@ async def chat_completions(req: ChatCompletionRequest):
         raise HTTPException(status_code=503, detail="Model is not loaded yet")
 
     dialog = [{"role": m.role, "content": m.content} for m in req.messages]
-    tokens = [g.tokenizer.encode_dialog_prompt(dialog=dialog, completion=True)]
-    prompt_tokens = len(tokens[0])
-    if prompt_tokens > g.gen_args.prompt_length:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                f"Prompt uses {prompt_tokens} tokens but this server is compiled for "
-                f"{g.gen_args.prompt_length}. Restart with a larger BITNET_PROMPT_LENGTH."
-            ),
-        )
+    while len(dialog) > 1:
+        tokens = [g.tokenizer.encode_dialog_prompt(dialog=dialog, completion=True)]
+        prompt_tokens = len(tokens[0])
+        if prompt_tokens <= g.gen_args.prompt_length:
+            break
+        # Remove the oldest user/assistant pair or oldest message (keep system prompt if exists)
+        if len(dialog) > 1 and dialog[0]["role"] == "system":
+            dialog.pop(1)
+        else:
+            dialog.pop(0)
+
+    if len(dialog) <= 1:
+        tokens = [g.tokenizer.encode_dialog_prompt(dialog=dialog, completion=True)]
+        prompt_tokens = len(tokens[0])
+        if prompt_tokens > g.gen_args.prompt_length:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Prompt uses {prompt_tokens} tokens but this server is compiled for "
+                    f"{g.gen_args.prompt_length}. The single message is too large."
+                ),
+            )
 
     requested_max_tokens = req.max_tokens or 512
     max_new_tokens = min(requested_max_tokens, g.gen_args.gen_length)
