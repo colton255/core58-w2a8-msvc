@@ -1146,6 +1146,14 @@ def main() -> None:
         model_class = Model.from_model_architecture(hparams["architectures"][0])
         model_instance = model_class(dir_model, ftype_map[args.outtype], fname_out, args.bigendian, args.use_temp_file)
 
+        if not args.vocab_only and model_instance.num_parts == 0:
+            logger.error(
+                "No source model weights were found in '%s'. Provide the original Hugging Face checkpoint "
+                "directory containing .safetensors or .bin files; a GGUF-only directory is insufficient.",
+                dir_model,
+            )
+            sys.exit(1)
+
         logger.info("Set model parameters")
         model_instance.set_gguf_parameters()
 

@@ -32,6 +32,7 @@ The `3rdparty/llama.cpp` submodule is pinned intentionally through [`.gitmodules
 
 The environment script automates the CPU download, conversion, and native compilation process.
 The CPU path is the primary automated flow. The GPU path remains a separate Windows-native experimental route on purpose and is not folded into `setup_env.py`.
+If you use `--model-dir` instead of `--hf-repo`, that directory must contain the original Hugging Face checkpoint files (`.safetensors` or `.bin`), not just a previously converted GGUF.
 
 **For CPU Inference (default `i2_s` GGUF):**
 ```bash

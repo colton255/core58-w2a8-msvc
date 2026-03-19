@@ -6,6 +6,7 @@ import platform
 import argparse
 import logging
 import shutil
+import struct
 from pathlib import Path
 
 logger = logging.getLogger("setup_env")
@@ -174,6 +175,35 @@ def build_cmake_args():
 
     return cmake_args
 
+def validate_gguf(gguf_path):
+    try:
+        with open(gguf_path, "rb") as handle:
+            header = handle.read(24)
+    except Exception as exc:
+        logging.error(f"Failed to read GGUF file {gguf_path}: {exc}")
+        sys.exit(1)
+
+    if len(header) < 24:
+        logging.error(f"GGUF file {gguf_path} is truncated.")
+        sys.exit(1)
+
+    if header[:4] != b"GGUF":
+        logging.error(f"GGUF file {gguf_path} has an invalid header.")
+        sys.exit(1)
+
+    version = struct.unpack("<I", header[4:8])[0]
+    tensor_count = struct.unpack("<Q", header[8:16])[0]
+
+    if version not in {2, 3}:
+        logging.error(f"GGUF file {gguf_path} uses unsupported version {version}.")
+        sys.exit(1)
+
+    if tensor_count == 0:
+        logging.error(
+            f"GGUF file {gguf_path} contains no tensors. Recreate it from the original Hugging Face checkpoint files."
+        )
+        sys.exit(1)
+
 def prepare_model():
     _, arch = system_info()
     hf_url = args.hf_repo
@@ -193,7 +223,16 @@ def prepare_model():
     else:
         logging.info(f"Loading model from directory {model_dir}.")
     gguf_path = os.path.join(model_dir, "ggml-model-" + quant_type + ".gguf")
-    if not os.path.exists(gguf_path) or os.path.getsize(gguf_path) == 0:
+    rebuild_gguf = not os.path.exists(gguf_path) or os.path.getsize(gguf_path) == 0
+    if not rebuild_gguf:
+        try:
+            validate_gguf(gguf_path)
+        except SystemExit:
+            logging.info(f"Rebuilding invalid GGUF file at {gguf_path}.")
+            os.remove(gguf_path)
+            rebuild_gguf = True
+
+    if rebuild_gguf:
         logging.info(f"Converting HF model to GGUF format...")
         if quant_type.startswith("tl"):
             run_command([sys.executable, "utils/cpu/convert-hf-to-gguf-bitnet.py", model_dir, "--outtype", quant_type, "--quant-embd"], log_step="convert_to_tl")
@@ -217,6 +256,8 @@ def prepare_model():
         logging.info(f"GGUF model saved at {gguf_path}")
     else:
         logging.info(f"GGUF model already exists at {gguf_path}")
+
+    validate_gguf(gguf_path)
 
 def setup_gguf():
     # Install the pip package
