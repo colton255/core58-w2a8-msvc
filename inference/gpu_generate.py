@@ -345,10 +345,15 @@ def get_prompts(interactive: bool) -> Iterable[list[str]]:
     if interactive:
         while True:
             try:
-                prompts = input("enter prompt: ").split("\n")
+                raw_prompt = input("enter prompt: ").strip()
             except (EOFError, KeyboardInterrupt):
                 print("exiting")
                 sys.exit(0)
+            if not raw_prompt:
+                continue
+            prompts = [prompt for prompt in raw_prompt.split("\n") if prompt.strip()]
+            if not prompts:
+                continue
             yield prompts
     else:
         yield [

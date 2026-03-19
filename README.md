@@ -14,17 +14,21 @@ The implementation focuses on a dense `W2A8` (Weight 2-bit, Activation 8-bit) ex
 Ensure you have Python 3.8+, Git, and Visual Studio C++ build tools installed with the LLVM/Clang toolchain enabled. For GPU builds, install the CUDA toolkit so `nvcc` is available on `PATH`.
 This repository does not ship model weights or prepared GPU checkpoints.
 
-```bash
+```powershell
 git clone https://github.com/syn-999/core58-w2a8-msvc.git
 cd core58-w2a8-msvc
 git submodule update --init --recursive
 
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+python -m venv venv_cpu
+.\venv_cpu\Scripts\python.exe -m pip install -r requirements.txt
+
+python -m venv venv_gpu
+.\venv_gpu\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-Use the activated repo venv for the Python commands below. The examples are written from the repository root to avoid `cd`/relative-path mistakes. The CPU wrappers can sometimes work with a global Python, but the GPU entrypoints expect the repo environment with `torch`, `fire`, `fastapi`, and `uvicorn` installed.
+The examples below are written from the repository root and use explicit interpreter paths so the CPU and GPU environments stay separate:
+- `venv_cpu\Scripts\python.exe` for `setup_env.py`, `cpu_inference.py`, and `cpu_server.py`
+- `venv_gpu\Scripts\python.exe` for `gpu_generate.py`, `gpu_server.py`, and the GPU utility scripts
 
 The `3rdparty/llama.cpp` submodule is pinned intentionally through [`.gitmodules`](./.gitmodules). Treat that fork and revision as part of the build surface unless you are deliberately revalidating the Windows-native toolchain.
 
@@ -35,13 +39,13 @@ The CPU path is the primary automated flow. The GPU path remains a separate Wind
 If you use `--model-dir` instead of `--hf-repo`, that directory must contain the original Hugging Face checkpoint files (`.safetensors` or `.bin`), not just a previously converted GGUF.
 
 **For CPU Inference (default `i2_s` GGUF):**
-```bash
-python setup_env.py --hf-repo tiiuae/Falcon3-10B-Instruct-1.58bit
+```powershell
+venv_cpu\Scripts\python.exe setup_env.py --hf-repo tiiuae/Falcon3-10B-Instruct-1.58bit
 ```
 
 **For CPU Inference (`tl2` on x86_64):**
-```bash
-python setup_env.py --hf-repo tiiuae/Falcon3-10B-Instruct-1.58bit --quant-type tl2
+```powershell
+venv_cpu\Scripts\python.exe setup_env.py --hf-repo tiiuae/Falcon3-10B-Instruct-1.58bit --quant-type tl2
 ```
 
 **For GPU Inference (CUDA):**
@@ -49,7 +53,7 @@ The GPU runtime does not ship checkpoints or compiled CUDA binaries. Prepare a c
 The examples below assume you place those artifacts under `models/gpu/bitnet-b1.58-2B-4T-bf16`.
 The default GPU decode backend is `int2`, which uses the packed CUDA kernel. If you need a slower reference fallback for debugging, switch to `--decode_backend=fp16`.
 Upstream BitNet also uses `xformers` attention for its fastest Linux/A100 path. On Windows this is optional and only works if your `xformers` wheel matches the exact local PyTorch, CUDA, and Python build.
-If you want to validate that stack explicitly, run `python scripts/check_gpu_env.py`. A working `xformers` path requires the local CUDA toolkit version to match `torch.version.cuda`.
+If you want to validate that stack explicitly, run `venv_gpu\Scripts\python.exe scripts/check_gpu_env.py`. A working `xformers` path requires the local CUDA toolkit version to match `torch.version.cuda`.
 
 ## Quick Start
 
@@ -57,20 +61,20 @@ Most users only need one of the launch commands below.
 
 **CPU terminal chat:**
 Starts an interactive conversation in the terminal with the Falcon GGUF model.
-```bash
-python inference/cpu_inference.py -m models/cpu/Falcon3-10B-Instruct-1.58bit/ggml-model-i2_s.gguf -p "You are a concise, accurate assistant. Stay on topic and stop when the answer is complete." -cnv -t 8 -c 4096 -n 512
+```powershell
+venv_cpu\Scripts\python.exe inference/cpu_inference.py -m models/cpu/Falcon3-10B-Instruct-1.58bit/ggml-model-i2_s.gguf -p "You are a concise, accurate assistant. Stay on topic and stop when the answer is complete." -cnv -t 8 -c 4096 -n 512
 ```
 
 **CPU browser chat:**
 Starts the local `llama-server.exe` web UI on `http://127.0.0.1:8080`.
-```bash
-python inference/cpu_server.py -m models/cpu/Falcon3-10B-Instruct-1.58bit/ggml-model-i2_s.gguf -p "You are a concise, accurate assistant. Stay on topic and stop when the answer is complete." -t 8 -c 4096 --host 127.0.0.1 --port 8080
+```powershell
+venv_cpu\Scripts\python.exe inference/cpu_server.py -m models/cpu/Falcon3-10B-Instruct-1.58bit/ggml-model-i2_s.gguf -p "You are a concise, accurate assistant. Stay on topic and stop when the answer is complete." -t 8 -c 4096 --host 127.0.0.1 --port 8080
 ```
 
 **GPU terminal chat:**
-Runs the Windows-native CUDA path from the activated repo venv.
-```bash
-python inference/gpu_generate.py models/gpu/bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --sampling=True --max_new_tokens=256
+Runs the Windows-native CUDA path from `venv_gpu`.
+```powershell
+venv_gpu\Scripts\python.exe inference/gpu_generate.py models/gpu/bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --sampling=True --max_new_tokens=256
 ```
 
 **GPU browser chat:**
@@ -80,27 +84,27 @@ The prompt budget below is a practical long-form setting for browser and API use
 $env:BITNET_CKPT_DIR = "models/gpu/bitnet-b1.58-2B-4T-bf16"
 $env:BITNET_PROMPT_LENGTH = "512"
 $env:BITNET_MAX_TOKENS = "768"
-python inference/gpu_server.py
+venv_gpu\Scripts\python.exe inference/gpu_server.py
 ```
 
 ## Reference Commands
 
 **CPU one-shot generation:**
 Routes directly via the C++ `llama-cli.exe` engine.
-```bash
-python inference/cpu_inference.py -m models/cpu/Falcon3-10B-Instruct-1.58bit/ggml-model-i2_s.gguf -p "A complete structural breakdown of a cell is" -n 200
+```powershell
+venv_cpu\Scripts\python.exe inference/cpu_inference.py -m models/cpu/Falcon3-10B-Instruct-1.58bit/ggml-model-i2_s.gguf -p "A complete structural breakdown of a cell is" -n 200
 ```
 
 **CPU interactive chat server:**
 Launches the local `llama-server.exe` web UI. The wrapper resolves the common Falcon model filename even if your local `models/cpu` tree is nested one level deeper. Continuous batching is left off by default for stability on Windows; add `--continuous-batching` if you want to experiment with it.
-```bash
-python inference/cpu_server.py -m models/cpu/Falcon3-10B-Instruct-1.58bit/ggml-model-i2_s.gguf -p "You are a concise, accurate assistant. Stay on topic and stop when the answer is complete." -t 8 -c 4096 --host 127.0.0.1 --port 8080
+```powershell
+venv_cpu\Scripts\python.exe inference/cpu_server.py -m models/cpu/Falcon3-10B-Instruct-1.58bit/ggml-model-i2_s.gguf -p "You are a concise, accurate assistant. Stay on topic and stop when the answer is complete." -t 8 -c 4096 --host 127.0.0.1 --port 8080
 ```
 
 **GPU execution:**
-Routes via the native PyTorch/NVCC wrapper from the activated repo venv. If you keep separate local environments instead of the single `venv` shown above, use your GPU-specific interpreter such as `venv_gpu\Scripts\python.exe`.
-```bash
-python inference/gpu_generate.py models/gpu/bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --sampling=True --max_new_tokens=256
+Routes via the native PyTorch/NVCC wrapper from `venv_gpu`.
+```powershell
+venv_gpu\Scripts\python.exe inference/gpu_generate.py models/gpu/bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --sampling=True --max_new_tokens=256
 ```
 
 **GPU browser/API server:**
@@ -109,7 +113,7 @@ Serves both a small local chat UI at `http://127.0.0.1:8000` and the OpenAI-styl
 $env:BITNET_CKPT_DIR = "models/gpu/bitnet-b1.58-2B-4T-bf16"
 $env:BITNET_PROMPT_LENGTH = "512"
 $env:BITNET_MAX_TOKENS = "768"
-python inference/gpu_server.py
+venv_gpu\Scripts\python.exe inference/gpu_server.py
 ```
 
 **GPU server tuning:**
@@ -119,19 +123,19 @@ $env:BITNET_PROMPT_LENGTH = "512"
 $env:BITNET_MAX_TOKENS = "1024"
 $env:BITNET_TEMPERATURE = "0.2"
 $env:BITNET_TOP_P = "0.9"
-python inference/gpu_server.py
+venv_gpu\Scripts\python.exe inference/gpu_server.py
 ```
 
 **Reference BF16 decode:**
 Uses the slower BF16 fallback path instead of the packed CUDA kernel.
-```bash
-python inference/gpu_generate.py models/gpu/bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --sampling=True --max_new_tokens=256 --decode_backend=fp16
+```powershell
+venv_gpu\Scripts\python.exe inference/gpu_generate.py models/gpu/bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --sampling=True --max_new_tokens=256 --decode_backend=fp16
 ```
 
 **Preparing a New GPU Checkpoint:**
-```bash
-python utils/gpu/convert_safetensors.py --safetensors_file models/gpu/bitnet-b1.58-2B-4T-bf16/model.safetensors --output models/gpu/bitnet-b1.58-2B-4T-bf16/model_state.pt --model_name 2B
-python utils/gpu/convert_checkpoint.py --input models/gpu/bitnet-b1.58-2B-4T-bf16/model_state.pt
+```powershell
+venv_gpu\Scripts\python.exe utils/gpu/convert_safetensors.py --safetensors_file models/gpu/bitnet-b1.58-2B-4T-bf16/model.safetensors --output models/gpu/bitnet-b1.58-2B-4T-bf16/model_state.pt --model_name 2B
+venv_gpu\Scripts\python.exe utils/gpu/convert_checkpoint.py --input models/gpu/bitnet-b1.58-2B-4T-bf16/model_state.pt
 cd src/cuda/bitnet_kernels
 .\compile.bat
 ```
