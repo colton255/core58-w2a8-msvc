@@ -4,6 +4,7 @@ import signal
 import platform
 import argparse
 import subprocess
+from pathlib import Path
 
 def run_command(command, shell=False):
     """Run a system command and ensure it succeeds."""
@@ -13,17 +14,60 @@ def run_command(command, shell=False):
         print(f"Error occurred while running command: {e}")
         sys.exit(1)
 
-def run_inference():
-    build_dir = "../build"
+THIS_DIR = Path(__file__).resolve().parent
+REPO_ROOT = THIS_DIR.parent
+
+def resolve_binary(name: str) -> str:
+    candidates = []
+    build_dir = REPO_ROOT / "build" / "bin"
     if platform.system() == "Windows":
-        main_path = os.path.join(build_dir, "bin", "Release", "llama-cli.exe")
-        if not os.path.exists(main_path):
-            main_path = os.path.join(build_dir, "bin", "llama-cli")
+        candidates.extend([
+            build_dir / "Release" / f"{name}.exe",
+            build_dir / f"{name}.exe",
+        ])
     else:
-        main_path = os.path.join(build_dir, "bin", "llama-cli")
+        candidates.append(build_dir / name)
+
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate)
+
+    print(
+        f"Unable to find {name}. Build artifacts are missing under {build_dir}. "
+        f"Rebuild with `powershell -ExecutionPolicy Bypass -File .\\scripts\\smoke_test.ps1 -BuildDir build -KeepBuildDir` from the repo root."
+    )
+    sys.exit(1)
+
+def resolve_model_path(model_arg: str) -> str:
+    requested = Path(model_arg)
+    candidates = []
+
+    if requested.exists():
+        return str(requested)
+
+    rel_candidate = (THIS_DIR / requested).resolve()
+    if rel_candidate.exists():
+        return str(rel_candidate)
+
+    if requested.name:
+        matches = list((REPO_ROOT / "models" / "cpu").rglob(requested.name))
+        if len(matches) == 1:
+            return str(matches[0])
+        candidates.extend(matches)
+
+    print(f"Unable to find model: {model_arg}")
+    if candidates:
+        print("Matching candidates:")
+        for candidate in candidates:
+            print(f"  {candidate}")
+    sys.exit(1)
+
+def run_inference():
+    main_path = resolve_binary("llama-cli")
+    model_path = resolve_model_path(args.model)
     command = [
         f'{main_path}',
-        '-m', args.model,
+        '-m', model_path,
         '-n', str(args.n_predict),
         '-t', str(args.threads),
         '-p', args.prompt,

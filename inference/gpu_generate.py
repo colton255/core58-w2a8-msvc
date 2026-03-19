@@ -11,8 +11,17 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Optional, Tuple, Union
 
-import fire
-import torch
+try:
+    import torch
+except ImportError:
+    print("Missing dependency 'torch'. Activate your repo GPU venv or run `pip install -r requirements.txt` before using gpu_generate.py.")
+    sys.exit(1)
+
+try:
+    import fire
+except ImportError:
+    print("Missing dependency 'fire'. Activate your repo venv or run `pip install -r requirements.txt` before using gpu_generate.py.")
+    sys.exit(1)
 
 try:
     import readline  # type: ignore # noqa: F401

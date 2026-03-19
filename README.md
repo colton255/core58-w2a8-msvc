@@ -24,6 +24,8 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
+Use the activated repo venv for the Python commands below. The CPU wrappers can sometimes work with a global Python, but the GPU entrypoints expect the repo environment with `torch`, `fire`, `fastapi`, and `uvicorn` installed.
+
 ## Setup & Compilation
 
 The environment script automates the CPU download, conversion, and native compilation process.
@@ -52,11 +54,18 @@ cd inference
 python cpu_inference.py -m ../models/cpu/Falcon3-10B-Instruct-1.58bit/ggml-model-i2_s.gguf -p "A complete structural breakdown of a cell is" -n 200
 ```
 
-**GPU Execution:**
-Routes via the native PyTorch/NVCC wrapper.
+**CPU Interactive Chat Server:**
+Launches the local `llama-server.exe` web UI. The wrapper resolves the common Falcon model filename even if your local `models/cpu` tree is nested one level deeper.
 ```bash
 cd inference
-python gpu_generate.py ../models/gpu/bitnet-b1.58-2B-4T-bf16 --interactive
+python cpu_server.py -m ../models/cpu/Falcon3-10B-Instruct-1.58bit/ggml-model-i2_s.gguf -t 8 -c 4096 --host 127.0.0.1 --port 8080
+```
+
+**GPU Execution:**
+Routes via the native PyTorch/NVCC wrapper. Run this from the repo venv. If you keep separate environments, replace `..\venv\Scripts\python.exe` with `..\venv_gpu\Scripts\python.exe`.
+```bash
+cd inference
+..\venv\Scripts\python.exe gpu_generate.py ..\models\gpu\bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --sampling=True --max_new_tokens=256
 ```
 
 **Preparing a New GPU Checkpoint:**

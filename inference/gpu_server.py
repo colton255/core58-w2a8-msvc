@@ -1,12 +1,23 @@
 import os
+import sys
 import time
 import uuid
 from pathlib import Path
-import torch
-import uvicorn
-from fastapi import FastAPI
-from pydantic import BaseModel
 from typing import List, Optional
+
+try:
+    import torch
+except ImportError:
+    print("Missing dependency 'torch'. Activate your repo GPU venv or run `pip install -r requirements.txt` before using gpu_server.py.")
+    sys.exit(1)
+
+try:
+    import uvicorn
+    from fastapi import FastAPI
+    from pydantic import BaseModel
+except ImportError:
+    print("Missing GPU server dependencies. Activate your repo GPU venv or run `pip install -r requirements.txt` before using gpu_server.py.")
+    sys.exit(1)
 
 try:
     from gpu_generate import FastGen, GenArgs
