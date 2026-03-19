@@ -79,6 +79,7 @@ INDEX_HTML = """<!doctype html>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>core58 GPU Chat</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     :root {
       color-scheme: light;
@@ -273,9 +274,9 @@ INDEX_HTML = """<!doctype html>
     function appendBubble(role, content) {
       const node = document.createElement('div');
       node.className = `msg ${role}`;
-      // Clean up stray HTML linebreaks often output by base instruct models
-      const cleanContent = content.replace(/<br\s*\/?>/gi, '\n');
-      node.textContent = `${role[0].toUpperCase()}${role.slice(1)}: ${cleanContent}`;
+      // Parse markdown and HTML natively rather than hardcoding edge cases
+      const parsedContent = typeof marked !== 'undefined' ? marked.parse(content, { breaks: true }) : content;
+      node.innerHTML = `<strong>${role[0].toUpperCase()}${role.slice(1)}:</strong><br/>${parsedContent}`;
       chatLog.appendChild(node);
     }
 
