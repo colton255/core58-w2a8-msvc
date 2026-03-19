@@ -81,6 +81,7 @@ Default `i2_s` build:
 ### GPU path
 
 The GPU runtime is not folded into `setup_env.py`.
+The current GPU runtime is validated against the `BitNet-b1.58-2B-4T` checkpoint layout used by `models\gpu\bitnet-b1.58-2B-4T-bf16`. Other GPU model shapes are not plug-and-play and would require code changes.
 
 Prepare a checkpoint directory that contains:
 - `model_state_fp16.pt`
@@ -95,6 +96,7 @@ cmd /c .\src\cuda\bitnet_kernels\compile.bat
 The examples below assume the GPU artifacts live under `models\gpu\bitnet-b1.58-2B-4T-bf16`.
 
 The default GPU decode backend is `int2`. If you need a slower reference path for debugging, use `--decode_backend=fp16`.
+If `libbitnet.dll` or either checkpoint file is missing, the GPU entrypoints now fail with a direct path-level error instead of a raw loader exception.
 
 Optional `xformers` attention is not required for the current Windows runtime. If you want to validate that stack explicitly, run:
 

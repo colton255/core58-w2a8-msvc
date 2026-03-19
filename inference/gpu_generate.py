@@ -14,7 +14,10 @@ from typing import Iterable, Optional, Tuple, Union
 try:
     import torch
 except ImportError:
-    print("Missing dependency 'torch'. Activate your repo GPU venv or run `pip install -r requirements.txt` before using gpu_generate.py.")
+    print(
+        "Missing dependency 'torch'. Activate `venv_gpu` and install the CUDA-enabled "
+        "PyTorch wheel documented in README.md before using gpu_generate.py."
+    )
     sys.exit(1)
 
 try:
@@ -33,15 +36,19 @@ if os.name == "nt" and hasattr(os, "add_dll_directory"):
     os.add_dll_directory(os.path.join(os.path.dirname(torch.__file__), "lib"))
 
 try:
-    import gpu_model as fast
-    from stats import Stats
-    from tokenizer import Tokenizer, ChatFormat
-    import sample_utils
-except ImportError:
-    from . import gpu_model as fast
-    from .stats import Stats
-    from .tokenizer import Tokenizer, ChatFormat
-    from . import sample_utils
+    try:
+        import gpu_model as fast
+        from stats import Stats
+        from tokenizer import Tokenizer, ChatFormat
+        import sample_utils
+    except ImportError:
+        from . import gpu_model as fast
+        from .stats import Stats
+        from .tokenizer import Tokenizer, ChatFormat
+        from . import sample_utils
+except Exception as exc:
+    print(exc)
+    sys.exit(1)
 
 
 @dataclass
@@ -77,6 +84,8 @@ class FastGen:
 
         if decode_backend not in {"fp16", "int2"}:
             raise ValueError(f"Unsupported decode backend: {decode_backend}")
+
+        validate_checkpoint_dir(ckpt_dir, decode_backend)
 
         model_args_prefill = fast.ModelArgs(use_kernel=False)
         model_args_decode = fast.ModelArgs(use_kernel=(decode_backend == "int2"))
@@ -257,8 +266,6 @@ class FastGen:
             )
         temperature = self.gen_args.temperature if temperature is None else temperature
         top_p = self.gen_args.top_p if top_p is None else top_p
-        print(max_prompt_length, gen_length)
-
         # bias = AttnBias.from_seqlens(
         #     q_seqlen=padded_prompt_lens,
         #     kv_seqlen=prompt_lens,
@@ -341,6 +348,21 @@ class FastGen:
         return stats, answers
 
 
+def validate_checkpoint_dir(ckpt_dir: str, decode_backend: str) -> None:
+    ckpt_root = Path(ckpt_dir)
+    if not ckpt_root.exists():
+        raise FileNotFoundError(f"Checkpoint directory does not exist: {ckpt_root}")
+
+    required_files = [ckpt_root / "model_state_fp16.pt"]
+    if decode_backend == "int2":
+        required_files.append(ckpt_root / "model_state_int2.pt")
+    missing_files = [path.name for path in required_files if not path.exists()]
+    if missing_files:
+        raise FileNotFoundError(
+            f"Checkpoint directory {ckpt_root} is missing required files: {', '.join(missing_files)}"
+        )
+
+
 def get_prompts(interactive: bool) -> Iterable[list[str]]:
     if interactive:
         while True:
@@ -375,12 +397,16 @@ def main(
     device = f"cuda:{local_rank}"
     torch.cuda.set_device(local_rank)
 
-    g = FastGen.build(
-        ckpt_dir,
-        GenArgs(gen_length=max_new_tokens, prompt_length=prompt_length),
-        device,
-        decode_backend=decode_backend,
-    )
+    try:
+        g = FastGen.build(
+            ckpt_dir,
+            GenArgs(gen_length=max_new_tokens, prompt_length=prompt_length),
+            device,
+            decode_backend=decode_backend,
+        )
+    except (FileNotFoundError, RuntimeError, ValueError) as exc:
+        print(exc)
+        sys.exit(1)
 
     if chat_format:
         g.tokenizer = ChatFormat(g.tokenizer)
@@ -393,7 +419,6 @@ def main(
         else:
             tokens = [g.tokenizer.encode(x, bos=False, eos=False) for x in prompts]
 
-        print(tokens)
         stats, out_tokens = g.generate_all(
             tokens, use_cuda_graphs="NO_CUDA_GRAPHS" not in os.environ, use_sampling=sampling,
         )

@@ -42,7 +42,19 @@ from pathlib import Path
 lib_ext = '.dll' if os.name == 'nt' else '.so'
 current_dir = Path(__file__).parent
 bitnet_lib_path = current_dir.parent / "src" / "cuda" / "bitnet_kernels" / f"libbitnet{lib_ext}"
-bitnet_lib = ctypes.CDLL(str(bitnet_lib_path), winmode=0 if os.name == 'nt' else 0)
+if not bitnet_lib_path.exists():
+    raise FileNotFoundError(
+        f"Missing GPU helper library at {bitnet_lib_path}. "
+        "Build it with `cmd /c .\\src\\cuda\\bitnet_kernels\\compile.bat` from the repo root."
+    )
+
+try:
+    bitnet_lib = ctypes.CDLL(str(bitnet_lib_path), winmode=0 if os.name == 'nt' else 0)
+except OSError as exc:
+    raise RuntimeError(
+        f"Failed to load GPU helper library {bitnet_lib_path}: {exc}. "
+        "Ensure CUDA and the DLL dependencies are available in this shell."
+    ) from exc
 
 def bitnet_int8xint2_linear(input0, input1, s, ws):
     out_shape = list(input0.shape)

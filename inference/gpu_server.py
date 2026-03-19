@@ -9,7 +9,10 @@ from typing import List, Optional
 try:
     import torch
 except ImportError:
-    print("Missing dependency 'torch'. Activate your repo GPU venv or run `pip install -r requirements.txt` before using gpu_server.py.")
+    print(
+        "Missing dependency 'torch'. Activate `venv_gpu` and install the CUDA-enabled "
+        "PyTorch wheel documented in README.md before using gpu_server.py."
+    )
     sys.exit(1)
 
 try:
