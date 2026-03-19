@@ -125,7 +125,7 @@ Open `http://127.0.0.1:8080`.
 ### GPU terminal chat
 
 ```powershell
-.\venv_gpu\Scripts\python.exe .\inference\gpu_generate.py .\models\gpu\bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --sampling=True --prompt_length=256 --max_new_tokens=256
+.\venv_gpu\Scripts\python.exe .\inference\gpu_generate.py .\models\gpu\bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --sampling=True --prompt_length=1024 --max_new_tokens=512
 ```
 
 ### GPU browser chat
@@ -176,7 +176,7 @@ Use this profile when you want longer multi-turn GPU chats and have enough VRAM 
 ### BF16 decode fallback
 
 ```powershell
-.\venv_gpu\Scripts\python.exe .\inference\gpu_generate.py .\models\gpu\bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --sampling=True --prompt_length=256 --max_new_tokens=256 --decode_backend=fp16
+.\venv_gpu\Scripts\python.exe .\inference\gpu_generate.py .\models\gpu\bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --sampling=True --prompt_length=1024 --max_new_tokens=512 --decode_backend=fp16
 ```
 
 ### Preparing a new GPU checkpoint

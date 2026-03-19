@@ -273,7 +273,9 @@ INDEX_HTML = """<!doctype html>
     function appendBubble(role, content) {
       const node = document.createElement('div');
       node.className = `msg ${role}`;
-      node.textContent = `${role[0].toUpperCase()}${role.slice(1)}: ${content}`;
+      // Clean up stray HTML linebreaks often output by base instruct models
+      const cleanContent = content.replace(/<br\s*\/?>/gi, '\n');
+      node.textContent = `${role[0].toUpperCase()}${role.slice(1)}: ${cleanContent}`;
       chatLog.appendChild(node);
     }
 
