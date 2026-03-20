@@ -190,10 +190,12 @@ cmd /c .\src\cuda\bitnet_kernels\compile.bat
 ## Runtime Notes
 
 - `cpu_inference.py` exits when generation finishes. With `-cnv`, it stays attached to your terminal session until you stop it.
+- In CPU `-cnv` mode, `-p` is optional. If omitted, the wrapper starts chat with an empty system turn and immediately waits for your first input.
 - `cpu_server.py` keeps one `llama-server.exe` child alive until you press `Ctrl+C`.
 - `gpu_generate.py --interactive=True` keeps one Python process alive until you exit the prompt or press `Ctrl+C`.
 - `gpu_server.py` serves a browser UI at `/`, API docs at `/docs`, and an OpenAI-style chat route at `/v1/chat/completions`.
 - The GPU browser UI is self-contained and does not require loading frontend libraries from the public internet.
+- The GPU sampling path now applies a repetition penalty window by default. Override it with `BITNET_REPEAT_LAST_N` and `BITNET_REPEAT_PENALTY` if you need to tune or disable that behavior.
 - Seeing one active model process is normal. Seeing multiple `llama-cli.exe` or `llama-server.exe` entries usually means you started more than one session or left an older one running.
 - The CPU browser route uses the vendored `llama.cpp` web UI, so the browser tab title is still upstream by default, the browser page may retain local UI state across reloads, and OpenAI-style response metadata follows upstream defaults.
 - The GPU browser route uses this repo's own FastAPI frontend and identifies as `core58 GPU Chat`. Its conversation state lives in page memory and resets on refresh or server restart.

@@ -124,6 +124,7 @@ def run_command(command, shell=False):
 
 THIS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = THIS_DIR.parent
+DEFAULT_CPU_MODEL = "../models/cpu/Falcon3-10B/Falcon3-10B-Instruct-1.58bit/ggml-model-i2_s.gguf"
 
 def resolve_binary(name: str) -> str:
     candidates = []
@@ -173,20 +174,29 @@ def resolve_model_path(model_arg: str) -> str:
 def run_inference():
     main_path = resolve_binary("llama-cli")
     model_path = resolve_model_path(args.model)
+    prompt = args.prompt
+    if args.conversation:
+        # llama.cpp conversation mode still requires a non-empty seed prompt. A single
+        # space preserves a blank system turn and lets `-if` hand control to the user.
+        prompt = " " if prompt is None else prompt
+    elif prompt is None:
+        print("Prompt is required unless -cnv/--conversation is enabled.")
+        sys.exit(2)
+
     command = [
         f'{main_path}',
         '-m', model_path,
         '-n', str(args.n_predict),
         '-t', str(args.threads),
-        '-p', args.prompt,
         '-ngl', '0',
         '-c', str(args.ctx_size),
         '--temp', str(args.temperature),
+        '-p', prompt,
     ]
     if args.batch_size is not None:
         command.extend(["-b", str(args.batch_size)])
     if args.conversation:
-        command.append("-cnv")
+        command.extend(["-cnv", "-if"])
     run_command(command)
 
 def signal_handler(sig, frame):
@@ -200,9 +210,9 @@ if __name__ == "__main__":
         signal.signal(signal.SIGBREAK, signal_handler)
     # Usage: python cpu_inference.py -p "Write a concise explanation of quantum entanglement."
     parser = argparse.ArgumentParser(description='Run inference')
-    parser.add_argument("-m", "--model", type=str, help="Path to model file", required=False, default="../models/cpu/Falcon3-10B-Instruct-1.58bit/ggml-model-i2_s.gguf")
+    parser.add_argument("-m", "--model", type=str, help="Path to model file", required=False, default=DEFAULT_CPU_MODEL)
     parser.add_argument("-n", "--n-predict", type=int, help="Number of tokens to predict when generating text", required=False, default=128)
-    parser.add_argument("-p", "--prompt", type=str, help="Prompt to generate text from", required=True)
+    parser.add_argument("-p", "--prompt", type=str, help="Prompt text. In conversation mode this becomes the initial system prompt and can be omitted.", required=False)
     parser.add_argument("-t", "--threads", type=int, help="Number of threads to use", required=False, default=2)
     parser.add_argument("-c", "--ctx-size", type=int, help="Size of the prompt context", required=False, default=2048)
     parser.add_argument("-temp", "--temperature", type=float, help="Temperature, a hyperparameter that controls the randomness of the generated text", required=False, default=0.8)

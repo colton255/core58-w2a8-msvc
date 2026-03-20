@@ -41,6 +41,8 @@ PROMPT_LENGTH = int(os.getenv("BITNET_PROMPT_LENGTH", "256"))
 MAX_TOKENS = int(os.getenv("BITNET_MAX_TOKENS", "2048"))
 DEFAULT_TEMPERATURE = float(os.getenv("BITNET_TEMPERATURE", "0.2"))
 DEFAULT_TOP_P = float(os.getenv("BITNET_TOP_P", "0.9"))
+DEFAULT_REPEAT_LAST_N = int(os.getenv("BITNET_REPEAT_LAST_N", "64"))
+DEFAULT_REPEAT_PENALTY = float(os.getenv("BITNET_REPEAT_PENALTY", "1.1"))
 DEFAULT_SYSTEM_PROMPT = os.getenv(
     "BITNET_SYSTEM_PROMPT",
     "You are a concise, accurate assistant. Stay on topic and stop when the answer is complete.",
@@ -63,6 +65,8 @@ async def lifespan(app: FastAPI):
             prompt_length=PROMPT_LENGTH,
             temperature=DEFAULT_TEMPERATURE,
             top_p=DEFAULT_TOP_P,
+            repeat_last_n=DEFAULT_REPEAT_LAST_N,
+            repeat_penalty=DEFAULT_REPEAT_PENALTY,
         ),
         DEVICE,
         decode_backend=DECODE_BACKEND,

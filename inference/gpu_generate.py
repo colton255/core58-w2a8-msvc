@@ -60,6 +60,8 @@ class GenArgs:
     use_sampling: bool = False
     temperature: float = 0.8
     top_p: float = 0.9
+    repeat_last_n: int = 64
+    repeat_penalty: float = 1.1
 
 
 class FastGen:
@@ -137,6 +139,53 @@ class FastGen:
         self._prefill_compile_model = self.compile_prefill()
         self._generate_compile_model = self.compile_generate()
         print(f"compiled model in {time.time() - start_time:.2f} seconds")
+
+    @staticmethod
+    def _apply_repetition_penalty(
+        logits: torch.Tensor,
+        repeat_buffer: Optional[torch.Tensor],
+        repeat_counts: Optional[list[int]],
+        repeat_penalty: float,
+    ) -> None:
+        if (
+            repeat_buffer is None
+            or repeat_counts is None
+            or repeat_penalty <= 1.0
+        ):
+            return
+
+        for row, count in enumerate(repeat_counts):
+            if count <= 0:
+                continue
+            recent = repeat_buffer[row] if count >= repeat_buffer.shape[1] else repeat_buffer[row, :count]
+            unique_tokens = torch.unique(recent).to(torch.long)
+            token_logits = logits[row].index_select(0, unique_tokens)
+            adjusted_logits = torch.where(
+                token_logits < 0,
+                token_logits * repeat_penalty,
+                token_logits / repeat_penalty,
+            )
+            logits[row].scatter_(0, unique_tokens, adjusted_logits)
+
+    @staticmethod
+    def _advance_repetition_state(
+        repeat_buffer: Optional[torch.Tensor],
+        repeat_counts: Optional[list[int]],
+        repeat_positions: Optional[list[int]],
+        next_token: torch.Tensor,
+        active_rows: Optional[torch.Tensor] = None,
+    ) -> None:
+        if repeat_buffer is None or repeat_counts is None or repeat_positions is None:
+            return
+
+        for row in range(next_token.shape[0]):
+            if active_rows is not None and not bool(active_rows[row]):
+                continue
+            position = repeat_positions[row]
+            repeat_buffer[row, position] = next_token[row]
+            if repeat_counts[row] < repeat_buffer.shape[1]:
+                repeat_counts[row] += 1
+            repeat_positions[row] = (position + 1) % repeat_buffer.shape[1]
 
     def compile_prefill(self):
 
@@ -271,6 +320,8 @@ class FastGen:
             )
         temperature = self.gen_args.temperature if temperature is None else temperature
         top_p = self.gen_args.top_p if top_p is None else top_p
+        repeat_last_n = max(self.gen_args.repeat_last_n, 0)
+        repeat_penalty = max(self.gen_args.repeat_penalty, 1.0)
         # bias = AttnBias.from_seqlens(
         #     q_seqlen=padded_prompt_lens,
         #     kv_seqlen=prompt_lens,
@@ -302,12 +353,45 @@ class FastGen:
         logits = logits.view(bs, self.model_args.vocab_size)
 
         if use_sampling:
+            repeat_buffer = None
+            repeat_counts = None
+            repeat_positions = None
+            if repeat_last_n > 0:
+                repeat_buffer = torch.full(
+                    (bs, repeat_last_n),
+                    self.tokenizer.eos_id,
+                    dtype=torch.int32,
+                    device="cuda",
+                )
+                repeat_counts = []
+                repeat_positions = []
+                for row, prompt in enumerate(prompts):
+                    recent_tokens = prompt[-repeat_last_n:]
+                    count = len(recent_tokens)
+                    if count > 0:
+                        repeat_buffer[row, :count] = torch.tensor(
+                            recent_tokens,
+                            dtype=torch.int32,
+                            device="cuda",
+                        )
+                    repeat_counts.append(count)
+                    repeat_positions.append(count % repeat_last_n)
+            self._apply_repetition_penalty(logits, repeat_buffer, repeat_counts, repeat_penalty)
             probs = torch.softmax(logits / max(temperature, 1e-5), dim=-1)
             next_token = sample_utils.top_p(probs, top_p)
         else:
+            repeat_buffer = None
+            repeat_counts = None
+            repeat_positions = None
             next_token = torch.argmax(logits, dim=-1)        
 
         next_token = next_token.reshape(bs)
+        self._advance_repetition_state(
+            repeat_buffer,
+            repeat_counts,
+            repeat_positions,
+            next_token,
+        )
         if single_sequence:
             out_tokens[0] = next_token[0]
         else:
@@ -354,12 +438,19 @@ class FastGen:
                 logits = output.view(1, self.model_args.vocab_size)
 
                 if use_sampling:
+                    self._apply_repetition_penalty(logits, repeat_buffer, repeat_counts, repeat_penalty)
                     probs = torch.softmax(logits / max(temperature, 1e-5), dim=-1)
                     next_token = sample_utils.top_p(probs, top_p)
                 else:
                     next_token = torch.argmax(logits, dim=-1)
 
                 next_token = next_token.reshape(1)
+                self._advance_repetition_state(
+                    repeat_buffer,
+                    repeat_counts,
+                    repeat_positions,
+                    next_token,
+                )
                 out_tokens[niter] = next_token[0]
                 steps_written = niter + 1
                 if (steps_written % self.EARLY_STOP_POLL_INTERVAL) == 0:
@@ -386,6 +477,7 @@ class FastGen:
                 logits = output.view(bs, self.model_args.vocab_size)
 
                 if use_sampling:
+                    self._apply_repetition_penalty(logits, repeat_buffer, repeat_counts, repeat_penalty)
                     probs = torch.softmax(logits / max(temperature, 1e-5), dim=-1)
                     next_token = sample_utils.top_p(probs, top_p)
                 else:
@@ -393,6 +485,13 @@ class FastGen:
 
                 next_token = next_token.reshape(bs)
                 next_token = torch.where(active, next_token, decode_input)
+                self._advance_repetition_state(
+                    repeat_buffer,
+                    repeat_counts,
+                    repeat_positions,
+                    next_token,
+                    active_rows=active,
+                )
                 out_tokens[niter, :] = next_token
                 finished |= token_is_stop(next_token)
                 steps_written = niter + 1
@@ -465,6 +564,10 @@ def main(
     sampling: bool = False,
     decode_backend: str = "int2",
     prompt_length: int = 64,
+    temperature: float = 0.8,
+    top_p: float = 0.9,
+    repeat_last_n: int = 64,
+    repeat_penalty: float = 1.1,
 ):
 
     local_rank = 0
@@ -474,7 +577,14 @@ def main(
     try:
         g = FastGen.build(
             ckpt_dir,
-            GenArgs(gen_length=max_new_tokens, prompt_length=prompt_length),
+            GenArgs(
+                gen_length=max_new_tokens,
+                prompt_length=prompt_length,
+                temperature=temperature,
+                top_p=top_p,
+                repeat_last_n=repeat_last_n,
+                repeat_penalty=repeat_penalty,
+            ),
             device,
             decode_backend=decode_backend,
         )

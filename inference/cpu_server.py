@@ -124,6 +124,7 @@ def run_command(command, shell=False):
 
 THIS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = THIS_DIR.parent
+DEFAULT_CPU_MODEL = "../models/cpu/Falcon3-10B/Falcon3-10B-Instruct-1.58bit/ggml-model-i2_s.gguf"
 
 def resolve_binary(name: str) -> str:
     candidates = []
@@ -209,7 +210,7 @@ if __name__ == "__main__":
         signal.signal(signal.SIGBREAK, signal_handler)
     
     parser = argparse.ArgumentParser(description='Run the core58 CPU server')
-    parser.add_argument("-m", "--model", type=str, help="Path to model file", required=False, default="../models/cpu/Falcon3-10B-Instruct-1.58bit/ggml-model-i2_s.gguf")
+    parser.add_argument("-m", "--model", type=str, help="Path to model file", required=False, default=DEFAULT_CPU_MODEL)
     parser.add_argument("-p", "--prompt", type=str, help="System prompt for the model", required=False)
     parser.add_argument("-n", "--n-predict", type=int, help="Number of tokens to predict", required=False, default=4096)
     parser.add_argument("-t", "--threads", type=int, help="Number of threads to use", required=False, default=2)
