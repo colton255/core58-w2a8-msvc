@@ -170,7 +170,8 @@ $env:BITNET_TOP_P = "0.9"
 .\venv_gpu\Scripts\python.exe .\inference\gpu_server.py
 ```
 
-Open `http://127.0.0.1:8000`.
+Wait for `Model loaded and ready for inference.`, then open `http://127.0.0.1:8000`.
+If port `8000` is already in use, set `BITNET_PORT` first, for example `$env:BITNET_PORT = "8001"`.
 
 ## Reference Commands
 
@@ -187,6 +188,15 @@ This serves:
 - browser UI at `/`
 - API docs at `/docs`
 - OpenAI-style chat route at `/v1/chat/completions`
+- local bind address `127.0.0.1:8000` by default
+
+If you need a different bind address or port:
+
+```powershell
+$env:BITNET_HOST = "127.0.0.1"
+$env:BITNET_PORT = "8001"
+.\venv_gpu\Scripts\python.exe .\inference\gpu_server.py
+```
 
 ### GPU longer-context server profile
 
@@ -221,6 +231,7 @@ cmd /c .\src\cuda\bitnet_kernels\compile.bat
 - `cpu_server.py` keeps one `llama-server.exe` child alive until you press `Ctrl+C`.
 - `gpu_generate.py --interactive=True` keeps one Python process alive until you exit the prompt or press `Ctrl+C`.
 - `gpu_server.py` serves a browser UI at `/`, API docs at `/docs`, and an OpenAI-style chat route at `/v1/chat/completions`.
+- `gpu_server.py` binds to `127.0.0.1:8000` by default. Override that with `BITNET_HOST` and `BITNET_PORT` if you need a different local port or want LAN access.
 - The GPU browser UI is self-contained and does not require loading frontend libraries from the public internet.
 - The GPU sampling path now applies a repetition penalty window by default. Override it with `BITNET_REPEAT_LAST_N` and `BITNET_REPEAT_PENALTY` if you need to tune or disable that behavior.
 - Seeing one active model process is normal. Seeing multiple `llama-cli.exe` or `llama-server.exe` entries usually means you started more than one session or left an older one running.

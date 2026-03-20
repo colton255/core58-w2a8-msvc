@@ -36,6 +36,8 @@ THIS_DIR = Path(__file__).resolve().parent
 DEFAULT_CKPT_DIR = THIS_DIR.parent / "models" / "gpu" / "bitnet-b1.58-2B-4T-bf16"
 CKPT_DIR = os.getenv("BITNET_CKPT_DIR", str(DEFAULT_CKPT_DIR if DEFAULT_CKPT_DIR.exists() else (THIS_DIR / "checkpoints")))
 DEVICE = os.getenv("BITNET_DEVICE", "cuda:0")
+HOST = os.getenv("BITNET_HOST", "127.0.0.1")
+PORT = int(os.getenv("BITNET_PORT", "8000"))
 DECODE_BACKEND = os.getenv("BITNET_DECODE_BACKEND", "int2")
 PROMPT_LENGTH = int(os.getenv("BITNET_PROMPT_LENGTH", "256"))
 MAX_TOKENS = int(os.getenv("BITNET_MAX_TOKENS", "2048"))
@@ -53,6 +55,7 @@ g = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global g
+    print(f"GPU browser/API server will be available at http://{HOST}:{PORT} after model load completes.")
     print(
         f"Loading model on {DEVICE} from {CKPT_DIR} using {DECODE_BACKEND} decode "
         f"(prompt_length={PROMPT_LENGTH}, max_tokens={MAX_TOKENS})"
@@ -470,4 +473,4 @@ async def chat_completions(req: ChatCompletionRequest):
     return resp
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host=HOST, port=PORT)
