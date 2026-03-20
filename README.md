@@ -108,16 +108,20 @@ A working `xformers` path requires the local CUDA toolkit version to match `torc
 
 ## Quick Start
 
-### CPU terminal chat
+For the CPU examples below, replace the `-m` path if your GGUF lives somewhere else. The default automated CPU flow writes to `.\models\cpu\Falcon3-10B\Falcon3-10B-Instruct-1.58bit\ggml-model-i2_s.gguf`.
+
+### CPU terminal one-shot
 
 ```powershell
-.\venv_cpu\Scripts\python.exe .\inference\cpu_inference.py -m .\models\cpu\Falcon3-10B-Instruct-1.58bit\ggml-model-i2_s.gguf -p "You are a concise, accurate assistant. Stay on topic and stop when the answer is complete." -cnv -t 8 -c 4096 -temp 0.2 -n 512
+.\venv_cpu\Scripts\python.exe .\inference\cpu_inference.py -m .\models\cpu\Falcon3-10B\Falcon3-10B-Instruct-1.58bit\ggml-model-i2_s.gguf -p "Explain the structure of a biological cell in one clear paragraph." -t 8 -c 4096 -temp 0.2 -n 192
 ```
+
+This exits when the response finishes.
 
 ### CPU browser chat
 
 ```powershell
-.\venv_cpu\Scripts\python.exe .\inference\cpu_server.py -m .\models\cpu\Falcon3-10B-Instruct-1.58bit\ggml-model-i2_s.gguf -p "You are a concise, accurate assistant. Stay on topic and stop when the answer is complete." -t 8 -c 4096 --temperature 0.2 --host 127.0.0.1 --port 8080
+.\venv_cpu\Scripts\python.exe .\inference\cpu_server.py -m .\models\cpu\Falcon3-10B\Falcon3-10B-Instruct-1.58bit\ggml-model-i2_s.gguf -t 8 -c 4096 --temperature 0.2 --host 127.0.0.1 --port 8080
 ```
 
 Open `http://127.0.0.1:8080`.
@@ -125,8 +129,10 @@ Open `http://127.0.0.1:8080`.
 ### GPU terminal chat
 
 ```powershell
-.\venv_gpu\Scripts\python.exe .\inference\gpu_generate.py .\models\gpu\bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --sampling=True --prompt_length=1024 --max_new_tokens=512
+.\venv_gpu\Scripts\python.exe .\inference\gpu_generate.py .\models\gpu\bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --prompt_length=1024 --max_new_tokens=256
 ```
+
+When `enter prompt:` appears, type a question such as `Name three basic parts of a biological cell in one sentence.` Add `--sampling=True` if you want less deterministic output.
 
 ### GPU browser chat
 
@@ -140,12 +146,6 @@ $env:BITNET_MAX_TOKENS = "512"
 Open `http://127.0.0.1:8000`.
 
 ## Reference Commands
-
-### CPU instruct one-shot
-
-```powershell
-.\venv_cpu\Scripts\python.exe .\inference\cpu_inference.py -m .\models\cpu\Falcon3-10B-Instruct-1.58bit\ggml-model-i2_s.gguf -p "You are a concise, accurate assistant. Explain the structure of a biological cell in one clear paragraph." -cnv -t 8 -c 4096 -temp 0.2 -n 256
-```
 
 ### GPU browser and API server
 
@@ -176,7 +176,7 @@ Use this profile when you want longer multi-turn GPU chats and have enough VRAM 
 ### BF16 decode fallback
 
 ```powershell
-.\venv_gpu\Scripts\python.exe .\inference\gpu_generate.py .\models\gpu\bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --sampling=True --prompt_length=1024 --max_new_tokens=512 --decode_backend=fp16
+.\venv_gpu\Scripts\python.exe .\inference\gpu_generate.py .\models\gpu\bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --prompt_length=1024 --max_new_tokens=256 --decode_backend=fp16
 ```
 
 ### Preparing a new GPU checkpoint
@@ -195,9 +195,9 @@ cmd /c .\src\cuda\bitnet_kernels\compile.bat
 - `gpu_server.py` serves a browser UI at `/`, API docs at `/docs`, and an OpenAI-style chat route at `/v1/chat/completions`.
 - The GPU browser UI is self-contained and does not require loading frontend libraries from the public internet.
 - Seeing one active model process is normal. Seeing multiple `llama-cli.exe` or `llama-server.exe` entries usually means you started more than one session or left an older one running.
-- The CPU browser route uses the vendored `llama.cpp` web UI, so the browser tab title is still upstream by default and the browser page may retain local UI state across reloads.
+- The CPU browser route uses the vendored `llama.cpp` web UI, so the browser tab title is still upstream by default, the browser page may retain local UI state across reloads, and OpenAI-style response metadata follows upstream defaults.
 - The GPU browser route uses this repo's own FastAPI frontend and identifies as `core58 GPU Chat`. Its conversation state lives in page memory and resets on refresh or server restart.
-- The GPU backend now gracefully truncates the oldest chat history if the conversation exceeds `BITNET_PROMPT_LENGTH`. 
+- The GPU backend truncates the oldest chat history if the conversation exceeds `BITNET_PROMPT_LENGTH`. This keeps the request alive, but if earlier instructions still matter, raise the limit or start a fresh session.
 - GPU benchmarking should be warmed once before you record throughput. Cold first runs can underreport tokens per second.
 
 To inspect or clean up lingering CPU runtime processes on Windows:
