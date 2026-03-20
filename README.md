@@ -111,18 +111,12 @@ That diagnostic is intentionally strict and returns a non-zero exit code when th
 
 For the CPU examples below, replace the `-m` path if your GGUF lives somewhere else. The default automated CPU flow writes to `.\models\cpu\Falcon3-10B\Falcon3-10B-Instruct-1.58bit\ggml-model-i2_s.gguf`.
 
-### CPU terminal one-shot
-
-```powershell
-.\venv_cpu\Scripts\python.exe .\inference\cpu_inference.py -m .\models\cpu\Falcon3-10B\Falcon3-10B-Instruct-1.58bit\ggml-model-i2_s.gguf -p "Explain the structure of a biological cell in one clear paragraph." -t 8 -c 4096 -temp 0.2 -n 256
-```
-
-This exits when the response finishes.
+These are the main user-facing commands for the repo. One-shot, fallback, and tuning-oriented variants are intentionally left to the reference sections and script flags below.
 
 ### CPU terminal chat
 
 ```powershell
-.\venv_cpu\Scripts\python.exe .\inference\cpu_inference.py -m .\models\cpu\Falcon3-10B\Falcon3-10B-Instruct-1.58bit\ggml-model-i2_s.gguf -cnv -t 8 -c 4096 -temp 0.2 -n 384
+.\venv_cpu\Scripts\python.exe .\inference\cpu_inference.py -m .\models\cpu\Falcon3-10B\Falcon3-10B-Instruct-1.58bit\ggml-model-i2_s.gguf -cnv -t 8 -c 4096 -temp 0.7 -n 512
 ```
 
 This stays in your terminal and waits for your first message.
@@ -130,7 +124,7 @@ This stays in your terminal and waits for your first message.
 ### CPU browser chat
 
 ```powershell
-.\venv_cpu\Scripts\python.exe .\inference\cpu_server.py -m .\models\cpu\Falcon3-10B\Falcon3-10B-Instruct-1.58bit\ggml-model-i2_s.gguf -t 8 -c 4096 --temperature 0.2 --host 127.0.0.1 --port 8080
+.\venv_cpu\Scripts\python.exe .\inference\cpu_server.py -m .\models\cpu\Falcon3-10B\Falcon3-10B-Instruct-1.58bit\ggml-model-i2_s.gguf -t 8 -c 4096 --temperature 0.7 --host 127.0.0.1 --port 8080
 ```
 
 Open `http://127.0.0.1:8080`.
@@ -138,10 +132,10 @@ Open `http://127.0.0.1:8080`.
 ### GPU terminal chat
 
 ```powershell
-.\venv_gpu\Scripts\python.exe .\inference\gpu_generate.py .\models\gpu\bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --prompt_length=1024 --max_new_tokens=512
+.\venv_gpu\Scripts\python.exe .\inference\gpu_generate.py .\models\gpu\bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --sampling=True --prompt_length=1024 --max_new_tokens=512 --temperature=0.7 --top_p=0.9
 ```
 
-When `enter prompt:` appears, type a question such as `Name three basic parts of a biological cell in one sentence.` Add `--sampling=True` if you want less deterministic output.
+When `enter prompt:` appears, type a question such as `Name three basic parts of a biological cell in one sentence.` If you want stricter or more repeatable output, drop `--sampling=True` or lower `--temperature`.
 
 ### GPU browser chat
 
@@ -149,6 +143,8 @@ When `enter prompt:` appears, type a question such as `Name three basic parts of
 $env:BITNET_CKPT_DIR = ".\models\gpu\bitnet-b1.58-2B-4T-bf16"
 $env:BITNET_PROMPT_LENGTH = "1024"
 $env:BITNET_MAX_TOKENS = "512"
+$env:BITNET_TEMPERATURE = "0.7"
+$env:BITNET_TOP_P = "0.9"
 .\venv_gpu\Scripts\python.exe .\inference\gpu_server.py
 ```
 
