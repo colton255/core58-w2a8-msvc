@@ -8,6 +8,8 @@
 
 Built on top of [Microsoft BitNet](https://github.com/microsoft/BitNet) and `llama.cpp`, this repo focuses on a practical Windows developer experience: reproducible builds, smoke-tested release artifacts, and clearly separated CPU and GPU paths.
 
+Latest Windows package: [Releases](https://github.com/syn-999/core58-w2a8-msvc/releases/latest)
+
 ## Why This Repo
 
 - Windows-first packaging and release zips
